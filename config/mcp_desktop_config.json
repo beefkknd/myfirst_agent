@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "chrome-mcp-stdio": {
+      "command": "node",
+      "args": [
+        "/opt/homebrew/lib/node_modules/mcp-chrome-bridge/dist/mcp/mcp-server-stdio.js"
+      ],
+      "permissions": "always"
+    }
+  }
+}

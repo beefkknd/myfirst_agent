@@ -1,0 +1,53 @@
+docker run --rm -e ES_URL=localhost:9200 -e ES_API_KEY=TmhLZ0Jaa0I2WnJmdTZkU1hUcms6TF9iRmdGaE5SM3FxUzlHTElkRGlsQQ== \
+    -p 8080:8080 docker.elastic.co/mcp/elasticsearch:7.14.1 http
+
+curl -X POST "http://localhost:8080/mcp" \
+    -H "Content-Type: application/json" \
+    -H "Authorization: ApiKey R05JRUJwa0JkMjFIUkdaNTN4RW86QTMya1I0SkVTSXVHUEhsMXEyS2ZfZw==" \
+    -H "Accept: application/json, text/event-stream" \
+    -d '{
+      "tool": "search",
+      "args": {
+        "index": "vessels",
+        "body": {
+          "size": 0,
+          "track_total_hits": true,
+          "query": {
+            "match_all": {}
+          }
+        }
+      }
+    }'
+
+# List available indices first
+curl -X POST "http://localhost:8080/mcp" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "Authorization: ApiKey R05JRUJwa0JkMjFIUkdaNTN4RW86QTMya1I0SkVTSXVHUEhsMXEyS2ZfZw==" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 4,
+    "method": "tools/call",
+    "params": {
+      "name": "list_indices",
+      "arguments": {
+        "index_pattern": "*"
+      }
+    }
+  }'
+
+  curl -X POST "http://localhost:8080/mcp" \
+      -H "Content-Type: application/json" \
+      -H "Accept: application/json, text/event-stream" \
+      -H "Authorization: ApiKey R05JRUJwa0JkMjFIUkdaNTN4RW86QTMya1I0SkVTSXVHUEhsMXEyS2ZfZw==" \
+      -d '{
+        "jsonrpc": "2.0",
+        "id": 6,
+        "method": "tools/call",
+        "params": {
+          "name": "get_mappings",
+          "arguments": {
+            "index": "coastline_10m"
+          }
+        }
+      }'
