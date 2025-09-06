@@ -52,12 +52,14 @@ class WebSearchResult(BaseModel):
     content_snippet: str = ""
     images_found: List[str] = Field(default_factory=list)
     metadata_extracted: Dict[str, Any] = Field(default_factory=dict)
+    mmsi: str = ""  # Associate research result with specific vessel MMSI
 
 class AnalysisState(BaseModel):
     prompt: Optional[AnalysisPrompt] = None
     prompt_file: Optional[str] = None
     selected_vessels: List[VesselData] = Field(default_factory=list)
-    web_research_results: List[WebSearchResult] = Field(default_factory=list)
+    web_research_results: List[WebSearchResult] = Field(default_factory=list)  # Keep for backward compatibility during transition
+    vessel_research_results: Dict[str, List[WebSearchResult]] = Field(default_factory=dict)  # MMSI -> research results
     report_content: str = ""
     report_path: Optional[str] = None
     current_step: str = "parse_prompt"

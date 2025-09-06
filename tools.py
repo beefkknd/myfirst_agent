@@ -32,9 +32,10 @@ def calculate_distance_miles(lat1: float, lon1: float, lat2: float, lon2: float)
 
 # MCP Chrome Bridge Wrapper
 class MCPChromeClient:
-    def __init__(self, config_path: str = "config/mcp_desktop_config.json", llm=None):
+    def __init__(self, config_path: str = "config/mcp_desktop_config.json", llm=None, num_links: int = 3):
         self.config_path = config_path
         self.llm = llm  # LLM for intelligent navigation
+        self.num_links = num_links  # Number of links to process
         self.server_params = StdioServerParameters(
             command="node",
             args=["/opt/homebrew/lib/node_modules/mcp-chrome-bridge/dist/mcp/mcp-server-stdio.js"],
@@ -101,14 +102,14 @@ class MCPChromeClient:
         """Synchronous wrapper for async MCP calls."""
         return asyncio.run(self._call_mcp_async(method, params))
     
-    def intelligent_search_and_navigate(self, query: str, research_focus: str = "specifications") -> List[WebSearchResult]:
-        """LLM-driven search that focuses on the first relevant result with cookie handling."""
+    def intelligent_search_and_navigate(self, query: str, research_focus: str = "specifications", vessel_mmsi: str = "") -> List[WebSearchResult]:
+        """Multi-step LLM-driven research workflow that processes multiple links."""
         results = []
         
         try:
-            print(f"🔍 LLM-guided search for: {query}")
+            print(f"🔍 Multi-step LLM research for: {query}")
             
-            # Navigate to Google search
+            # Step 1: Navigate to Google search
             search_url = f"https://www.google.com/search?q={query.replace(' ', '+')}"
             search_result = self._call_mcp("chrome_navigate", {"url": search_url})
             
@@ -118,160 +119,364 @@ class MCPChromeClient:
             
             print("✅ Navigated to Google search")
             
-            # Get interactive elements
-            links_result = self._call_mcp("chrome_get_interactive_elements")
+            # Step 2: Get search results and parse elements
+            search_result_elements = self._extract_search_results()
             
-            if "error" in links_result or "result" not in links_result or not links_result["result"]:
-                print(f"❌ Failed to get elements")
-                return [WebSearchResult(url="error", content_snippet="Failed to get search results")]
-            
-            # Extract and parse elements with improved nesting handling
-            elements_data = links_result["result"]
-            elements = []
-            
-            # Handle different response structures
-            if isinstance(elements_data, dict):
-                if "elements" in elements_data:
-                    elements = elements_data["elements"]
-                elif "content" in elements_data:
-                    content = elements_data["content"]
-                    if isinstance(content, list) and len(content) > 0:
-                        # Try to parse nested JSON from first item
-                        first_item = content[0]
-                        if isinstance(first_item, dict) and "text" in first_item:
-                            try:
-                                nested_json = json.loads(first_item["text"])
-                                elements = nested_json.get("elements", [])
-                            except json.JSONDecodeError:
-                                elements = content
-                        else:
-                            elements = content
-            elif isinstance(elements_data, list):
-                elements = elements_data
-                # Check if first element contains nested JSON
-                if len(elements) > 0 and isinstance(elements[0], dict) and "text" in elements[0]:
-                    try:
-                        nested_json = json.loads(elements[0]["text"])
-                        elements = nested_json.get("elements", elements)
-                    except json.JSONDecodeError:
-                        pass  # Keep original elements
-            
-            # Filter search result links
-            search_result_elements = []
-            skip_terms = ["sign in", "images", "videos", "news", "shopping", "more", "tools", "settings"]
-            
-            for element in elements:
-                if isinstance(element, dict):
-                    text = element.get("text", "")
-                    elem_type = element.get("type", "")
-                    selector = element.get("selector", "")
-
-                    # Look for clickable links with substantial text
-                    if (elem_type == "link" and
-                            element.get("isInteractive", False) and
-                            not element.get("disabled", True) and
-                            text and
-                            len(text) > 20 and
-                            ("http" in text.lower() or "www." in text.lower()) and
-                            not any(skip in text.lower() for skip in skip_terms)):
-                        search_result_elements.append({
-                            "selector": selector,
-                            "text": text[:300],
-                            "type": elem_type
-                        })
-
-            print(f"🔍 Found {len(search_result_elements)} clickable search results")
-            for i, elem in enumerate(search_result_elements[:3]):
-                print(f"  [{i}]: {elem['text'][:80]}...")
-
             if not search_result_elements:
                 print("❌ No relevant search results found")
                 return [WebSearchResult(url="error", content_snippet="No relevant search results")]
             
-            # LLM selects the best result
-            if self.llm and len(search_result_elements) > 1:
-                selection = self._llm_select_best_result(search_result_elements, research_focus)
-                selected_index = selection.get("selected_index", 0)
-            else:
-                selected_index = 0
+            # Step 3: LLM First Use - Analyze search results to select top N links
+            selected_links = self._llm_select_top_links(search_result_elements, query, research_focus)
             
-            if selected_index >= len(search_result_elements):
-                selected_index = 0
+            if not selected_links:
+                print("❌ LLM failed to select links")
+                return [WebSearchResult(url="error", content_snippet="Failed to select relevant links")]
             
-            # Click on the selected result and handle page content
-            selected_element = search_result_elements[selected_index]
-            print(f"🎯 Selected: {selected_element['text'][:50]}...")
+            # Step 4: Sequential Processing - Navigate to each selected link
+            for i, link_info in enumerate(selected_links[:self.num_links]):
+                print(f"🌐 Processing link {i+1}/{min(len(selected_links), self.num_links)}: {link_info.get('text', '')[:50]}...")
+                
+                result = self._process_single_link(link_info, i+1, query, vessel_mmsi)
+                if vessel_mmsi:
+                    result.mmsi = vessel_mmsi  # Associate result with vessel MMSI
+                results.append(result)
             
-            return self._navigate_and_extract_content(selected_element, query)
+            print(f"✅ Completed processing {len(results)} links")
+            return results
                         
         except Exception as e:
-            print(f"❌ Search operation failed: {str(e)}")
-            results.append(WebSearchResult(
+            print(f"❌ Multi-step research failed: {str(e)}")
+            return [WebSearchResult(
                 url="error", 
-                content_snippet=f"Search failed: {str(e)}"
-            ))
-        
-        return results
+                content_snippet=f"Research failed: {str(e)}"
+            )]
     
-    def _navigate_and_extract_content(self, selected_element: Dict, query: str) -> List[WebSearchResult]:
-        """Navigate to selected result and extract content with cookie handling."""
-        results = []
+    def _extract_search_results(self) -> List[Dict]:
+        """Extract and parse search result elements from Google search page."""
+        links_result = self._call_mcp("chrome_get_interactive_elements")
+        
+        if "error" in links_result or "result" not in links_result or not links_result["result"]:
+            print(f"❌ Failed to get elements")
+            return []
+        
+        # Extract and parse elements with improved nesting handling
+        elements_data = links_result["result"]
+        elements = []
+        
+        # Handle different response structures
+        if isinstance(elements_data, dict):
+            if "elements" in elements_data:
+                elements = elements_data["elements"]
+            elif "content" in elements_data:
+                content = elements_data["content"]
+                if isinstance(content, list) and len(content) > 0:
+                    # Try to parse nested JSON from first item
+                    first_item = content[0]
+                    if isinstance(first_item, dict) and "text" in first_item:
+                        try:
+                            nested_json = json.loads(first_item["text"])
+                            elements = nested_json.get("elements", [])
+                        except json.JSONDecodeError:
+                            elements = content
+                    else:
+                        elements = content
+        elif isinstance(elements_data, list):
+            elements = elements_data
+            # Check if first element contains nested JSON
+            if len(elements) > 0 and isinstance(elements[0], dict) and "text" in elements[0]:
+                try:
+                    nested_json = json.loads(elements[0]["text"])
+                    elements = nested_json.get("elements", elements)
+                except json.JSONDecodeError:
+                    pass  # Keep original elements
+        
+        # Filter search result links
+        search_result_elements = []
+        skip_terms = ["sign in", "images", "videos", "news", "shopping", "more", "tools", "settings"]
+        
+        for element in elements:
+            if isinstance(element, dict):
+                text = element.get("text", "")
+                elem_type = element.get("type", "")
+                selector = element.get("selector", "")
+
+                # Look for clickable links with substantial text
+                if (elem_type == "link" and
+                        element.get("isInteractive", False) and
+                        not element.get("disabled", True) and
+                        text and
+                        len(text) > 20 and
+                        ("http" in text.lower() or "www." in text.lower()) and
+                        not any(skip in text.lower() for skip in skip_terms)):
+                    search_result_elements.append({
+                        "selector": selector,
+                        "text": text[:300],
+                        "type": elem_type
+                    })
+
+        print(f"🔍 Found {len(search_result_elements)} clickable search results")
+        return search_result_elements
+    
+    def _llm_select_top_links(self, search_results: List[Dict], query: str, research_focus: str) -> List[Dict]:
+        """LLM First Use: Analyze search results to identify top N links that mention the specific vessel."""
+        if not self.llm:
+            print("⚠️ No LLM available, selecting first results")
+            return search_results[:self.num_links]
+        
+        results_text = ""
+        for i, result in enumerate(search_results[:10]):  # Analyze up to 10 results
+            results_text += f"{i}: {result['text']}\n\n"
+        
+        selection_prompt = f"""
+        You are analyzing Google search results to find the BEST {self.num_links} links for vessel research.
+        
+        Search Query: {query}
+        Research Focus: {research_focus}
+        
+        Available search results:
+        {results_text}
+        
+        Select the TOP {self.num_links} results that are most likely to contain comprehensive vessel information. 
+        Prioritize in this order:
+        1. Marine Traffic (marinetraffic.com) - vessel tracking/specs
+        2. Official shipping companies or vessel operators
+        3. VesselFinder or similar vessel databases
+        4. Maritime industry sites and shipbuilding companies
+        5. Wikipedia or maritime encyclopedias
+        
+        Avoid generic news articles, ads, or irrelevant pages.
+        
+        Respond with ONLY a JSON array of the selected result indices (e.g., [0, 3, 7]).
+        Maximum {self.num_links} indices.
+        """
         
         try:
+            response = self.llm.invoke([
+                ("system", "You are a maritime research expert. Select the most authoritative vessel information sources."),
+                ("user", selection_prompt)
+            ])
+            
+            # Parse JSON response
+            content = response.content.strip()
+            import re
+            json_match = re.search(r'\[[\d,\s]+\]', content)
+            if json_match:
+                indices = json.loads(json_match.group())
+                selected_links = []
+                for idx in indices:
+                    if 0 <= idx < len(search_results):
+                        selected_links.append(search_results[idx])
+                
+                print(f"🎯 LLM selected {len(selected_links)} links: {indices}")
+                return selected_links
+            
+        except Exception as e:
+            print(f"⚠️ LLM selection failed: {e}")
+        
+        # Fallback to first N results
+        print(f"⚠️ Using fallback selection of first {self.num_links} results")
+        return search_results[:self.num_links]
+    
+    def _process_single_link(self, link_info: Dict, link_number: int, query: str, vessel_mmsi: str = "") -> WebSearchResult:
+        """Process a single link: navigate, extract content, save file, and use LLM to extract metadata."""
+        try:
+            # Click on the link
             click_result = self._call_mcp("chrome_click_element", {
-                "selector": selected_element["selector"]
+                "selector": link_info["selector"]
             })
             
-            if "error" not in click_result:
-                import time
-                time.sleep(3)  # Wait for page load
-                
-                # Check for cookie dialogs and handle them
-                self._handle_cookie_dialogs()
-                
-                # Get current URL
-                url_result = self._call_mcp("get_windows_and_tabs")
-                current_url = "unknown"
-                if "result" in url_result and url_result["result"]:
-                    tabs_data = url_result["result"]
-                    if isinstance(tabs_data, dict) and "tabs" in tabs_data:
-                        tabs = tabs_data["tabs"]
-                        if tabs and len(tabs) > 0:
-                            current_url = tabs[0].get("url", "unknown")
-                
-                # Extract content
-                content_result = self._call_mcp("chrome_get_web_content")
-                raw_content = ""
-                if "result" in content_result and content_result["result"]:
-                    content_obj = content_result["result"]
-                    if isinstance(content_obj, dict) and "content" in content_obj:
-                        content_list = content_obj["content"]
-                        if isinstance(content_list, list):
-                            content_parts = []
-                            for item in content_list[:15]:  # More content for better analysis
-                                if isinstance(item, dict) and "text" in item:
-                                    content_parts.append(item["text"])
-                            raw_content = " ".join(content_parts)[:5000]  # Larger limit
-                
-                if raw_content and len(raw_content) > 100 and "google.com" not in current_url:
-                    # Use LLM to create compact technical analysis
-                    analyzed_content = self._create_technical_analysis(raw_content, query)
-                    
-                    result = WebSearchResult(
-                        url=current_url,
-                        title=selected_element["text"],
-                        content_snippet=analyzed_content,
-                        images_found=[]
-                    )
-                    results.append(result)
-                    print(f"✅ Extracted and analyzed content from {current_url[:50]}...")
-                else:
-                    print("⚠️ Insufficient page content or still on search page")
-                    
-        except Exception as e:
-            print(f"❌ Error navigating to result: {str(e)}")
+            if "error" in click_result:
+                print(f"❌ Failed to click link {link_number}: {click_result['error']}")
+                return WebSearchResult(
+                    url="error",
+                    content_snippet=f"Link {link_number}: Click failed - {click_result['error']}"
+                )
             
-        return results
+            import time
+            time.sleep(3)  # Wait for page load
+            
+            # Handle cookie dialogs
+            self._handle_cookie_dialogs()
+            
+            # Get current URL
+            current_url = self._get_current_url()
+            
+            # Extract page content
+            raw_content = self._extract_page_content()
+            
+            if not raw_content or len(raw_content) < 100:
+                print(f"⚠️ Insufficient content from link {link_number}")
+                return WebSearchResult(
+                    url=current_url,
+                    content_snippet=f"Link {link_number}: Insufficient content"
+                )
+            
+            # Save content to file
+            content_file = self._save_content_to_file(raw_content, link_number, vessel_mmsi)
+            
+            # LLM Second Use: Extract comprehensive vessel metadata
+            vessel_metadata = self._extract_vessel_metadata_with_llm(raw_content, query, current_url)
+            
+            print(f"✅ Processed link {link_number}: {current_url[:50]}...")
+            return WebSearchResult(
+                url=current_url,
+                title=link_info.get("text", "")[:100],
+                content_snippet=vessel_metadata,
+                images_found=[],  # Could be enhanced to extract images
+                metadata_extracted={"content_file": content_file}
+            )
+            
+        except Exception as e:
+            print(f"❌ Error processing link {link_number}: {str(e)}")
+            return WebSearchResult(
+                url="error",
+                content_snippet=f"Link {link_number}: Processing failed - {str(e)}"
+            )
+    
+    def _get_current_url(self) -> str:
+        """Get the current URL of the active tab."""
+        url_result = self._call_mcp("get_windows_and_tabs")
+        current_url = "unknown"
+        if "result" in url_result and url_result["result"]:
+            tabs_data = url_result["result"]
+            if isinstance(tabs_data, dict) and "tabs" in tabs_data:
+                tabs = tabs_data["tabs"]
+                if tabs and len(tabs) > 0:
+                    current_url = tabs[0].get("url", "unknown")
+        return current_url
+    
+    def _extract_page_content(self) -> str:
+        """Extract cleaned text content from the current page."""
+        content_result = self._call_mcp("chrome_get_web_content")
+        raw_content = ""
+        if "result" in content_result and content_result["result"]:
+            content_obj = content_result["result"]
+            if isinstance(content_obj, dict) and "content" in content_obj:
+                content_list = content_obj["content"]
+                if isinstance(content_list, list):
+                    content_parts = []
+                    for item in content_list:  # Get more content for analysis
+                        if isinstance(item, dict) and "text" in item:
+                            content_parts.append(item["text"])
+                    raw_content = " ".join(content_parts)
+        return raw_content
+    
+    def _save_content_to_file(self, content: str, link_number: int, vessel_mmsi: str = "") -> str:
+        """Save content to local file in vessel-specific directory."""
+        try:
+            # Create vessel-specific folder structure
+            if vessel_mmsi:
+                search_dir = os.path.join("reports", "search_results", vessel_mmsi)
+            else:
+                search_dir = os.path.join("reports", "search_results")
+                
+            os.makedirs(search_dir, exist_ok=True)
+            filename = os.path.join(search_dir, f"result{link_number}.html")
+            
+            with open(filename, "w", encoding="utf-8") as f:
+                f.write(content)
+            
+            print(f"💾 Saved content to {filename}")
+            return filename
+            
+        except Exception as e:
+            print(f"⚠️ Failed to save content file: {e}")
+            return ""
+    
+    def _extract_vessel_metadata_with_llm(self, content: str, query: str, url: str) -> str:
+        """LLM Second Use: Extract comprehensive vessel metadata as structured information."""
+        if not self.llm:
+            return content[:1500]  # Fallback to truncated content
+        
+        metadata_prompt = f"""
+        Extract comprehensive vessel metadata from this web page content in strict JSON format.
+        
+        Search Query: {query}
+        Source URL: {url}
+        Content: {content[:8000]}  # Limit content size for LLM
+        
+        Extract and structure the following vessel information:
+        {{
+            "vessel_name": "string",
+            "imo_number": "string",
+            "mmsi": "string",
+            "call_sign": "string",
+            "vessel_type": "string",
+            "flag": "string",
+            "dimensions": {{
+                "length_overall": "string",
+                "beam": "string",
+                "draft": "string"
+            }},
+            "tonnage": {{
+                "gross_tonnage": "string",
+                "deadweight": "string"
+            }},
+            "propulsion": {{
+                "engine_type": "string",
+                "power": "string",
+                "speed": "string"
+            }},
+            "construction": {{
+                "built_year": "string",
+                "shipyard": "string",
+                "classification": "string"
+            }},
+            "operational": {{
+                "owner": "string",
+                "operator": "string",
+                "current_status": "string"
+            }},
+            "additional_info": "string"
+        }}
+        
+        If information is not available, use null for that field.
+        Respond with ONLY valid JSON, no additional text.
+        """
+        
+        try:
+            response = self.llm.invoke([
+                ("system", "You are a maritime data extraction expert. Extract vessel information as strict JSON."),
+                ("user", metadata_prompt)
+            ])
+            
+            content_response = response.content.strip()
+            
+            # Try to parse JSON and validate
+            try:
+                vessel_data = json.loads(content_response)
+                # Convert back to formatted string for display
+                return json.dumps(vessel_data, indent=2)
+            except json.JSONDecodeError:
+                # If JSON parsing fails, extract key information manually
+                print("⚠️ LLM response was not valid JSON, using fallback extraction")
+                return self._fallback_extract_key_info(content, query)
+            
+        except Exception as e:
+            print(f"⚠️ LLM metadata extraction failed: {e}")
+            return self._fallback_extract_key_info(content, query)
+    
+    def _fallback_extract_key_info(self, content: str, query: str) -> str:
+        """Fallback extraction of key vessel information without LLM."""
+        # Simple keyword-based extraction
+        lines = content.split('\n')
+        key_info = []
+        
+        keywords = ['vessel', 'ship', 'imo', 'mmsi', 'length', 'beam', 'draft', 'tonnage', 
+                   'built', 'owner', 'operator', 'flag', 'type']
+        
+        for line in lines[:50]:  # Check first 50 lines
+            line_lower = line.lower().strip()
+            if any(keyword in line_lower for keyword in keywords):
+                if len(line.strip()) > 10 and len(line.strip()) < 200:
+                    key_info.append(line.strip())
+        
+        if key_info:
+            return "Key Information:\n" + "\n".join(key_info[:10])
+        else:
+            return content[:1000]  # Fallback to truncated content
+    
     
     def _handle_cookie_dialogs(self):
         """Detect and handle cookie acceptance dialogs."""
@@ -321,89 +526,12 @@ class MCPChromeClient:
         except Exception as e:
             print(f"⚠️ Cookie dialog handling failed: {e}")
     
-    def _create_technical_analysis(self, content: str, query: str) -> str:
-        """Use LLM to create compact technical analysis of extracted content."""
-        if not self.llm:
-            return content[:1500]  # Fallback to truncated content
-        
-        analysis_prompt = f"""
-        Create a concise technical analysis of this vessel information.
-        
-        Search Query: {query}
-        Content: {content}
-        
-        Format as itemized technical specifications focusing on:
-        • Vessel specifications (length, beam, draft, tonnage)
-        • Propulsion and performance data
-        • Operational details and capabilities
-        • Construction and classification info
-        • Current status and ownership
-        
-        Keep response under 800 characters. Use bullet points. Be precise and technical.
-        """
-        
-        try:
-            response = self.llm.invoke([
-                ("system", "You are a maritime technical analyst. Extract key vessel specifications concisely."),
-                ("user", analysis_prompt)
-            ])
-            
-            analyzed = response.content.strip()
-            return analyzed if len(analyzed) > 50 else content[:1500]
-            
-        except Exception as e:
-            print(f"⚠️ LLM analysis failed: {e}")
-            return content[:1500]
-    
-    def _llm_select_best_result(self, search_results: List[Dict], research_focus: str) -> Dict:
-        """LLM selects the most relevant search result."""
-        if not self.llm:
-            return {"selected_index": 0}
-        
-        results_text = ""
-        for i, result in enumerate(search_results[:5]):  # Top 5 results
-            results_text += f"{i}: {result['text']}\n"
-        
-        selection_prompt = f"""
-        Select the best search result for vessel research focused on: {research_focus}
-        
-        Available results:
-        {results_text}
-        
-        Prioritize in this order:
-        1. Marine Traffic (marinetraffic.com) - vessel tracking/specs
-        2. Official shipping companies or vessel operators
-        3. VesselFinder or similar vessel databases
-        4. Maritime industry sites
-        5. Wikipedia (last resort)
-        
-        Respond with just the number (0-{len(search_results)-1}) of the best result.
-        """
-        
-        try:
-            response = self.llm.invoke([
-                ("system", "You are a research expert. Select the most authoritative source."),
-                ("user", selection_prompt)
-            ])
-            
-            # Extract number from response
-            content = response.content.strip()
-            for char in content:
-                if char.isdigit():
-                    index = int(char)
-                    if 0 <= index < len(search_results):
-                        return {"selected_index": index}
-            
-        except Exception as e:
-            print(f"⚠️ LLM selection failed: {e}")
-        
-        return {"selected_index": 0}
 
-# Initialize MCP client
-mcp_client = MCPChromeClient()
+# Initialize MCP client with default parameters
+mcp_client = MCPChromeClient(num_links=3)
 
 @tool
-def search_vessels_by_distance(min_distance_miles: float = 50.0, date: str = "2022-01-01", scroll_batches: int = 3) -> List[VesselData]:
+def search_vessels_by_distance(min_distance_miles: float = 50.0, date: str = "2022-01-01", scroll_batches: int = 5) -> List[VesselData]:
     """Search for vessels with long tracks using geohash grid aggregation and scroll API processing."""
     from typing import Dict, Set
     
@@ -825,8 +953,27 @@ def search_vessels_by_distance_old(min_distance_miles: float = 50.0, date: str =
     return long_distance_vessels[:10]
 
 @tool
-def web_research_vessel(vessel_name: str, mmsi: str, imo: str = "", research_focus: str = "specifications") -> List[WebSearchResult]:
-    """Research vessel information using LLM-guided web search."""
+def web_research_vessel(vessel_name: str, mmsi: str, imo: str = "", research_focus: str = "specifications", num_links: int = 3) -> List[WebSearchResult]:
+    """Research vessel information using multi-step LLM-guided web search.
+    
+    Args:
+        vessel_name: Name of the vessel to research
+        mmsi: MMSI identifier for the vessel
+        imo: IMO identifier for the vessel (optional)
+        research_focus: Focus area for research (specifications, operational_context, etc.)
+        num_links: Number of web sources to process (default 3)
+    
+    Returns:
+        List of WebSearchResult objects with mmsi field populated
+    
+    Examples:
+        # Research a specific vessel
+        results = web_research_vessel("OCEAN INTERVENTION", "366614000", "IMO9876543")
+        
+        # Results will include vessel-specific research data with MMSI association
+        for result in results:
+            print(f"Found data for MMSI {result.mmsi}: {result.url}")
+    """
     search_terms = [vessel_name]
     if mmsi:
         search_terms.append(f"MMSI {mmsi}")
@@ -834,7 +981,21 @@ def web_research_vessel(vessel_name: str, mmsi: str, imo: str = "", research_foc
         search_terms.append(f"IMO {imo}")
     
     query = " ".join(search_terms) + " ship vessel specifications"
-    return mcp_client.intelligent_search_and_navigate(query, research_focus)
+    
+    # Use the global mcp_client but ensure it has the right configuration
+    # The LLM should already be set by the vessel agent
+    if hasattr(mcp_client, 'num_links'):
+        mcp_client.num_links = num_links
+    
+    # Call intelligent search with vessel MMSI for proper file organization
+    results = mcp_client.intelligent_search_and_navigate(query, research_focus, mmsi)
+    
+    # Ensure all results have the MMSI field populated (fallback if not set in MCPChromeClient)
+    for result in results:
+        if not result.mmsi and mmsi:
+            result.mmsi = mmsi
+    
+    return results
 
 @tool
 def download_vessel_image(image_url: str, vessel_name: str) -> str:

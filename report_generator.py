@@ -17,6 +17,25 @@ class VesselReportGenerator:
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MARITIME CONTROL SYSTEM - {{ vessels|length }} Vessel(s) Analysis</title>
     <style>
+        :root {
+            /* Ocean-inspired color palette */
+            --ocean-dark: #1a2332;
+            --ocean-darker: #141b26;
+            --ocean-deepest: #0f141d;
+            --ocean-blue: #4a90e2;
+            --ocean-blue-muted: #3674b8;
+            --ocean-teal: #2c9aa0;
+            --ocean-teal-dark: #1e6b70;
+            --ocean-light: #e8f1f8;
+            --ocean-medium: #b8c8d9;
+            --ocean-panel: #f7fafc;
+            --ocean-border: #4a5568;
+            --ocean-bright: #60a5fa;
+            --ocean-success: #06b6d4;
+            --ocean-warning: #f59e0b;
+            --ocean-error: #ef4444;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -24,10 +43,10 @@ class VesselReportGenerator:
         }
         
         body {
-            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-            background: #0a0e1a;
-            color: #00ff88;
-            line-height: 1.2;
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Consolas', monospace;
+            background: var(--ocean-dark);
+            color: var(--ocean-light);
+            line-height: 1.4;
             font-size: 13px;
             overflow-x: auto;
         }
@@ -38,12 +57,13 @@ class VesselReportGenerator:
         }
         
         .header {
-            background: linear-gradient(90deg, #001122 0%, #003344 50%, #001122 100%);
-            border: 1px solid #00ff88;
-            padding: 8px 12px;
-            margin-bottom: 8px;
+            background: linear-gradient(90deg, var(--ocean-deepest) 0%, var(--ocean-darker) 50%, var(--ocean-deepest) 100%);
+            border: 1px solid var(--ocean-teal);
+            padding: 12px 16px;
+            margin-bottom: 12px;
             position: relative;
             overflow: hidden;
+            box-shadow: 0 2px 8px rgba(26, 35, 50, 0.3);
         }
         
         .header::before {
@@ -53,8 +73,8 @@ class VesselReportGenerator:
             left: -100%;
             width: 100%;
             height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(0,255,136,0.1), transparent);
-            animation: scan 3s linear infinite;
+            background: linear-gradient(90deg, transparent, rgba(44, 154, 160, 0.1), transparent);
+            animation: scan 4s linear infinite;
         }
         
         @keyframes scan {
@@ -63,80 +83,88 @@ class VesselReportGenerator:
         }
         
         .header h1 {
-            color: #00ffff;
-            font-size: 18px;
-            text-shadow: 0 0 10px #00ffff;
-            letter-spacing: 2px;
+            color: var(--ocean-bright);
+            font-size: 20px;
+            font-weight: 600;
+            text-shadow: 0 0 8px rgba(96, 165, 250, 0.3);
+            letter-spacing: 1.5px;
         }
         
         .header .status {
-            color: #00ff88;
-            font-size: 11px;
-            margin-top: 2px;
+            color: var(--ocean-medium);
+            font-size: 12px;
+            margin-top: 4px;
+            font-weight: 500;
         }
         
         .main-grid {
             display: grid;
             grid-template-columns: 1fr 1fr 1fr;
-            gap: 8px;
-            height: calc(100vh - 80px);
+            gap: 12px;
+            height: calc(100vh - 100px);
         }
         
         .column {
-            background: #0f1419;
-            border: 1px solid #334155;
+            background: var(--ocean-darker);
+            border: 1px solid var(--ocean-border);
+            border-radius: 8px;
             overflow-y: auto;
+            box-shadow: 0 4px 12px rgba(15, 20, 29, 0.4);
         }
         
         .column-header {
-            background: #1e293b;
-            border-bottom: 1px solid #00ff88;
-            padding: 6px 8px;
-            color: #00ffff;
-            font-weight: bold;
-            font-size: 12px;
+            background: var(--ocean-deepest);
+            border-bottom: 2px solid var(--ocean-teal);
+            padding: 12px 16px;
+            color: var(--ocean-bright);
+            font-weight: 600;
+            font-size: 13px;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 1.2px;
             position: sticky;
             top: 0;
             z-index: 100;
+            border-radius: 8px 8px 0 0;
         }
         
         .vessel-block {
-            border-bottom: 1px solid #334155;
-            padding: 8px;
-            margin-bottom: 4px;
+            border-bottom: 1px solid var(--ocean-border);
+            padding: 16px;
+            margin-bottom: 8px;
             position: relative;
+            transition: all 0.2s ease;
         }
         
         .vessel-block:hover {
-            background: #1a1f2e;
-            border-left: 3px solid #00ff88;
+            background: var(--ocean-dark);
+            border-left: 4px solid var(--ocean-teal);
+            transform: translateX(2px);
         }
         
         .vessel-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 6px;
-            padding-bottom: 4px;
-            border-bottom: 1px solid #334155;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--ocean-border);
         }
         
         .vessel-name {
-            color: #00ffff;
-            font-weight: bold;
-            font-size: 14px;
-            text-shadow: 0 0 5px #00ffff;
+            color: var(--ocean-bright);
+            font-weight: 600;
+            font-size: 16px;
+            text-shadow: 0 0 6px rgba(96, 165, 250, 0.2);
         }
         
         .vessel-status {
-            color: #00ff88;
-            font-size: 10px;
-            background: #001a0d;
-            padding: 2px 6px;
-            border: 1px solid #00ff88;
-            border-radius: 2px;
+            color: var(--ocean-light);
+            font-size: 11px;
+            background: var(--ocean-teal-dark);
+            padding: 4px 8px;
+            border: 1px solid var(--ocean-teal);
+            border-radius: 4px;
+            font-weight: 500;
         }
         
         .data-grid {
@@ -278,6 +306,121 @@ class VesselReportGenerator:
             font-size: 10px;
             line-height: 1.1;
         }
+
+        /* Enhanced tabbed interface for multiple research results */
+        .research-tabs {
+            background: #1a1f2e;
+            border: 1px solid #334155;
+            margin: 4px 0;
+        }
+
+        .tab-headers {
+            display: flex;
+            background: #0f1419;
+            border-bottom: 1px solid #334155;
+        }
+
+        .tab-btn {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: #94a3b8;
+            padding: 6px 4px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 10px;
+            border-right: 1px solid #334155;
+            position: relative;
+        }
+
+        .tab-btn:last-child {
+            border-right: none;
+        }
+
+        .tab-btn.active {
+            background: #1a1f2e;
+            color: #00ff88;
+        }
+
+        .status-dot {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            margin-left: 4px;
+        }
+
+        .status-success { background: #00ff88; }
+        .status-partial { background: #ffaa00; }
+        .status-failed { background: #ff4444; }
+        .status-unknown { background: #666; }
+
+        .tab-content {
+            padding: 6px;
+        }
+
+        .source-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px 6px;
+            border-bottom: 1px solid #334155;
+            background: #0a0f1a;
+            margin-bottom: 6px;
+        }
+
+        .source-url {
+            color: #00ffff;
+            text-decoration: none;
+            font-size: 10px;
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .source-url:hover {
+            text-decoration: underline;
+        }
+
+        .reliability-badge {
+            background: #001122;
+            color: #00ff88;
+            padding: 2px 4px;
+            font-size: 8px;
+            border: 1px solid #00ff88;
+            border-radius: 2px;
+        }
+
+        .metadata-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 4px;
+            padding: 6px 0;
+            background: #0a0f1a;
+            margin-bottom: 6px;
+        }
+
+        .metadata-item {
+            background: #1a1f2e;
+            border: 1px solid #334155;
+            padding: 3px 4px;
+            border-left: 2px solid #00ff88;
+        }
+
+        .metadata-label {
+            color: #00ff88;
+            font-size: 8px;
+            font-weight: bold;
+            display: block;
+        }
+
+        .metadata-value {
+            color: #94a3b8;
+            font-size: 9px;
+            display: block;
+            margin-top: 1px;
+        }
         
         .footer {
             background: #001122;
@@ -370,6 +513,37 @@ class VesselReportGenerator:
             document.body.appendChild(modal);
             
             modal.onclick = () => document.body.removeChild(modal);
+        }
+        
+        function showTab(tabId) {
+            // Parse vessel MMSI from tab ID if it contains underscore
+            let vessel_mmsi = '';
+            if (tabId.toString().includes('_')) {
+                vessel_mmsi = tabId.toString().split('_')[0];
+            }
+            
+            // Hide all tabs for the same vessel (same MMSI prefix)
+            if (vessel_mmsi) {
+                document.querySelectorAll(`[id^="tab-${vessel_mmsi}_"]`).forEach(tab => {
+                    tab.style.display = 'none';
+                });
+                // Remove active class from all buttons for this vessel
+                document.querySelectorAll(`[onclick*="${vessel_mmsi}_"]`).forEach(btn => {
+                    btn.classList.remove('active');
+                });
+            } else {
+                // Fallback for legacy single-vessel format
+                document.querySelectorAll('.tab-content').forEach(tab => {
+                    tab.style.display = 'none';
+                });
+                document.querySelectorAll('.tab-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+            }
+            
+            // Show selected tab and mark button as active
+            document.getElementById('tab-' + tabId).style.display = 'block';
+            document.querySelector(`[onclick*="${tabId}"]`).classList.add('active');
         }
         
         window.onload = function() {
@@ -506,13 +680,50 @@ class VesselReportGenerator:
                     </div>
                     {% endif %}
                     
-                    {% if web_research %}
-                    {% for result in web_research %}
-                    <div class="research-compact">
-                        <div class="research-title">{{ result.title[:50] }}...</div>
-                        <div class="research-snippet">{{ result.content_snippet[:120] }}...</div>
+                    {% set vessel_research = vessel_research_results.get(vessel.mmsi, []) %}
+                    {% if not vessel_research and web_research %}
+                        {% set vessel_research = web_research %}
+                    {% endif %}
+                    
+                    {% if vessel_research %}
+                    <div class="research-tabs">
+                        <div class="tab-headers">
+                            {% for result in vessel_research %}
+                            <button class="tab-btn {% if loop.first %}active{% endif %}" 
+                                    onclick="showTab({{ vessel.mmsi }}_{{ loop.index }})"
+                                    data-status="{{ result.status if result.status else 'unknown' }}">
+                                <span class="source-indicator">SRC {{ loop.index }}</span>
+                                <span class="status-dot status-{{ result.status if result.status else 'unknown' }}"></span>
+                            </button>
+                            {% endfor %}
+                        </div>
+                        
+                        {% for result in vessel_research %}
+                        <div class="tab-content" id="tab-{{ vessel.mmsi }}_{{ loop.index }}" 
+                             {% if not loop.first %}style="display:none"{% endif %}>
+                            <div class="source-header">
+                                <a href="{{ result.url }}" target="_blank" class="source-url">{{ result.title if result.title else result.url[:50] }}</a>
+                                <span class="reliability-badge">{{ result.reliability if result.reliability else 'PENDING' }}</span>
+                            </div>
+                            
+                            {% if result.metadata_extracted and result.metadata_extracted != result.content_snippet %}
+                            <div class="metadata-grid">
+                                {% set metadata = result.metadata_extracted %}
+                                {% if metadata and metadata != 'error' %}
+                                    {% for key, value in metadata.items() if value and key not in ['status', 'reliability'] %}
+                                    <div class="metadata-item">
+                                        <span class="metadata-label">{{ key.replace('_', ' ').upper() }}</span>
+                                        <span class="metadata-value">{{ value }}</span>
+                                    </div>
+                                    {% endfor %}
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                            
+                            <div class="research-snippet">{{ result.content_snippet[:300] }}...</div>
+                        </div>
+                        {% endfor %}
                     </div>
-                    {% endfor %}
                     {% endif %}
                 </div>
                 {% endfor %}
@@ -619,9 +830,13 @@ class VesselReportGenerator:
                 max_speed = max([point.get("sog", 0) for point in vessel.track_points])
             vessel_max_speeds.append(max_speed)
             
-            # Collect photos for this vessel (for now, all vessels share the same research results)
+            # Collect photos for this vessel using vessel-specific research results
             photos = []
-            for result in state.web_research_results:
+            vessel_research = state.vessel_research_results.get(vessel.mmsi, [])
+            if not vessel_research and state.web_research_results:  # Fallback for backward compatibility
+                vessel_research = state.web_research_results
+            
+            for result in vessel_research:
                 photos.extend(result.images_found[:2])  # Max 2 photos per source
             photos = photos[:3]  # Max 3 photos total
             vessel_photos.append(photos)
@@ -633,7 +848,8 @@ class VesselReportGenerator:
             vessel_maps=vessel_maps,
             vessel_max_speeds=vessel_max_speeds,
             vessel_photos=vessel_photos,
-            web_research=state.web_research_results
+            web_research=state.web_research_results,  # Keep for backward compatibility
+            vessel_research_results=state.vessel_research_results  # New vessel-specific research data
         )
 
         # Save report

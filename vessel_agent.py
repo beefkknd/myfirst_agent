@@ -190,44 +190,62 @@ class VesselAnalysisAgent:
         return state
 
     def internet_search_node(self, state: AnalysisState) -> AnalysisState:
-        """Research vessels using web search."""
+        """Research ALL vessels using web search with multi-vessel processing."""
         print("🌐 Researching vessels on the internet...")
         
         if not state.selected_vessels:
             state.errors.append("No vessels to research")
             return state
-            
-        # Research the top vessel with longest track
-        top_vessel = state.selected_vessels[0]
-        print(f"Researching: {top_vessel.vessel_name}")
         
-        try:
-            # Get research focus from LLM-parsed prompt
-            research_focus = getattr(state.prompt.web_research, 'research_focus', 'specifications')
+        # Initialize vessel_research_results if not exists
+        if not hasattr(state, 'vessel_research_results'):
+            state.vessel_research_results = {}
+        
+        # Process ALL vessels in state.selected_vessels
+        total_vessels = len(state.selected_vessels)
+        successful_research = 0
+        
+        for i, vessel in enumerate(state.selected_vessels, 1):
+            print(f"🚢 Researching vessel {i}/{total_vessels}: {vessel.vessel_name} (MMSI: {vessel.mmsi})")
             
-            research_results = web_research_vessel.invoke({
-                "vessel_name": top_vessel.vessel_name,
-                "mmsi": top_vessel.mmsi,
-                "imo": top_vessel.imo or "",
-                "research_focus": research_focus
-            })
-            
-            state.web_research_results = research_results
-            print(f"✅ Research complete - found {len(research_results)} sources")
-            
-            # Download images (simplified)
-            for result in research_results:
-                for img_url in result.images_found[:1]:  # Max 1 per source
-                    download_result = download_vessel_image.invoke({
-                        "image_url": img_url,
-                        "vessel_name": top_vessel.vessel_name
-                    })
-                    if download_result and not download_result.startswith("Download failed"):
-                        print(f"📷 Downloaded image: {download_result}")
-                        
-        except Exception as e:
-            state.errors.append(f"Internet research error: {str(e)}")
-            print(f"❌ Research error: {e}")
+            try:
+                # Get research focus from LLM-parsed prompt
+                research_focus = getattr(state.prompt.web_research, 'research_focus', 'specifications')
+                
+                research_results = web_research_vessel.invoke({
+                    "vessel_name": vessel.vessel_name,
+                    "mmsi": vessel.mmsi,
+                    "imo": vessel.imo or "",
+                    "research_focus": research_focus
+                })
+                
+                # Store results in vessel-specific collection
+                state.vessel_research_results[vessel.mmsi] = research_results
+                print(f"✅ Research complete for {vessel.vessel_name} - found {len(research_results)} sources")
+                successful_research += 1
+                
+                # Download images for this vessel (simplified)
+                for result in research_results:
+                    for img_url in result.images_found[:1]:  # Max 1 per source
+                        download_result = download_vessel_image.invoke({
+                            "image_url": img_url,
+                            "vessel_name": vessel.vessel_name
+                        })
+                        if download_result and not download_result.startswith("Download failed"):
+                            print(f"📷 Downloaded image for {vessel.vessel_name}: {download_result}")
+                
+                # Maintain backward compatibility by updating web_research_results with first vessel
+                if i == 1:  # First vessel
+                    state.web_research_results = research_results
+                            
+            except Exception as e:
+                error_msg = f"Research error for {vessel.vessel_name} (MMSI: {vessel.mmsi}): {str(e)}"
+                state.errors.append(error_msg)
+                print(f"❌ {error_msg}")
+                # Continue processing other vessels even if one fails
+                continue
+        
+        print(f"🎯 Multi-vessel research complete: {successful_research}/{total_vessels} vessels successfully researched")
         
         state.current_step = "evaluate_info"
         return state

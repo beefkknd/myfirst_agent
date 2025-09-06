@@ -13,6 +13,7 @@ This system analyzes vessel movements from Elasticsearch AIS data, conducts auto
 - **🗺️ Interactive Visualizations**: Folium maps with track lines, markers, and heatmaps
 - **🤖 Multi-Agent Workflow**: LangGraph state machine with 6-step analysis process
 - **📊 Rich HTML Reports**: Professional reports with vessel specs, photos, and route analysis
+- **🚢 Multi-Vessel Processing**: Analyzes multiple vessels simultaneously with MMSI-based organization
 
 ## 🏗️ Architecture
 
@@ -30,10 +31,18 @@ prompts/            # Structured analysis prompt configurations
 
 1. **parse_prompt** → Extract analysis tasks from structured prompt files
 2. **fetch_tracks** → Query Elasticsearch, calculate vessel distances using Haversine formula
-3. **internet_search** → Automated browser navigation via MCP Chrome bridge
+3. **internet_search** → Multi-vessel automated browser navigation via MCP Chrome bridge
 4. **write_report** → Generate comprehensive HTML report with embedded maps
 5. **review_report** → Quality validation and error checking
 6. **publish_report** → Finalize and save complete analysis
+
+### Multi-Vessel Processing
+
+The system processes multiple vessels in a single analysis run:
+- **Individual Research**: Each vessel gets its own web research session
+- **MMSI-Based Organization**: Search results stored in `reports/search_results/{mmsi}/`
+- **Parallel Visualization**: All vessels displayed in unified report with individual tabs
+- **Error Isolation**: Issues with one vessel don't affect others
 
 ## 🚀 Quick Start
 
@@ -93,14 +102,20 @@ python vessel_agent.py --list-prompts
 ==================================================
 🔍 Parsing analysis prompt...
 🚢 Fetching vessel tracks from Elasticsearch...
-Found 5 vessels with long tracks
-1. EVER GIVEN (MMSI: 353136000) - 245.3 miles
-2. MSC DANIELA (MMSI: 636019825) - 198.7 miles
+Found 3 vessels with long tracks
+1. OCEAN INTERVENTION (MMSI: 366614000) - 245.3 miles
+2. MSC DANIELA (MMSI: 636019825) - 198.7 miles  
 3. MAERSK ESSEX (MMSI: 219018671) - 156.2 miles
 🌐 Researching vessels on the internet...
+  🔍 Researching OCEAN INTERVENTION (366614000)...
+  📁 Search results saved to: reports/search_results/366614000/
+  🔍 Researching MSC DANIELA (636019825)...
+  📁 Search results saved to: reports/search_results/636019825/
+  🔍 Researching MAERSK ESSEX (219018671)...
+  📁 Search results saved to: reports/search_results/219018671/
 📝 Writing vessel analysis report...
-✅ Report generated: reports/vessel_report_353136000_EVER_GIVEN.html
-🎉 ANALYSIS COMPLETE!
+✅ Report generated: reports/vessel_report_366614000_OCEAN_INTERVENTION.html
+🎉 ANALYSIS COMPLETE! All 3 vessels processed.
 ```
 
 ## 📋 Prompt Configuration
@@ -137,17 +152,23 @@ Find vessels with exceptionally long tracks to understand operational patterns.
 - **Density Heatmaps**: Areas of concentrated vessel activity
 - **Interactive Markers**: Clickable points with timestamp and speed data
 
-### Vessel Intelligence
+### Multi-Vessel Intelligence
+- **Tabbed Interface**: Each vessel gets its own dedicated tab
+- **Individual Research**: Unique web research results for each vessel MMSI
+- **Comparative Analysis**: Side-by-side vessel performance metrics
+- **MMSI-Based Organization**: Clean separation of vessel-specific data
+
+### Vessel Details (Per Vessel)
 - **Identification**: MMSI, IMO, call sign, vessel type
 - **Physical Specs**: Length, width, draft measurements
 - **Performance Stats**: Distance traveled, max speed, track duration
-- **Web Research**: Automated collection of vessel photos and metadata
+- **Dedicated Web Research**: Automated collection of vessel-specific photos and metadata
 
 ### Professional Layout
 - **Responsive Design**: Works on desktop and mobile
 - **Rich Typography**: Clean, professional presentation
 - **Data Visualization**: Charts and statistics
-- **Source Attribution**: Links to research sources
+- **Source Attribution**: Links to research sources with vessel-specific organization
 
 ## 🛠️ Development
 
@@ -163,7 +184,11 @@ myfirst_agent/
 ├── prompts/              # Analysis configurations
 │   └── prompt1.md
 ├── reports/              # Generated reports
-│   └── images/           # Downloaded vessel photos
+│   ├── images/           # Downloaded vessel photos
+│   └── search_results/   # Web research by MMSI
+│       ├── 366614000/    # OCEAN INTERVENTION research
+│       ├── 636019825/    # MSC DANIELA research  
+│       └── 219018671/    # MAERSK ESSEX research
 └── config/               # MCP configuration
     └── mcp_desktop_config.json
 ```
@@ -180,8 +205,8 @@ myfirst_agent/
 1. **AIS Data Import**: CSV → Elasticsearch with proper field mapping
 2. **Distance Calculation**: Haversine formula for great circle distances
 3. **Vessel Filtering**: Identify vessels with 50+ mile tracks
-4. **Web Research**: Automated browser navigation and content extraction
-5. **Report Generation**: Combine data into interactive HTML reports
+4. **Multi-Vessel Web Research**: Individual browser sessions for each vessel with MMSI-based storage
+5. **Report Generation**: Combine all vessel data into interactive HTML reports with tabbed interface
 
 ## 🔧 Configuration
 
@@ -206,9 +231,9 @@ GOOGLE_API_KEY=your_key_here  # For future Gemini integration (currently disable
 ### Typical Analysis Times
 - **Data Query**: 2-5 seconds (10K+ vessel records)
 - **Distance Calculation**: 1-3 seconds per vessel
-- **Web Research**: 30-60 seconds (3 pages)
+- **Multi-Vessel Web Research**: 30-60 seconds per vessel (scales with number of vessels)
 - **Report Generation**: 5-10 seconds
-- **Total Runtime**: ~2-3 minutes per analysis
+- **Total Runtime**: ~3-5 minutes for 3-vessel analysis
 
 ### Resource Usage
 - **Memory**: ~500MB during analysis
