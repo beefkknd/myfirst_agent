@@ -53,6 +53,8 @@ class WebSearchResult(BaseModel):
     images_found: List[str] = Field(default_factory=list)
     metadata_extracted: Dict[str, Any] = Field(default_factory=dict)
     mmsi: str = ""  # Associate research result with specific vessel MMSI
+    status: Optional[str] = None  # Status for tab display (success, partial, failed, unknown)
+    reliability: Optional[str] = None  # Reliability badge display
 
 class AnalysisState(BaseModel):
     prompt: Optional[AnalysisPrompt] = None

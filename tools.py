@@ -3,6 +3,9 @@ import math
 import os
 import subprocess
 import asyncio
+import shutil
+import urllib.parse
+import re
 from typing import List, Dict, Any
 
 import requests
@@ -32,7 +35,7 @@ def calculate_distance_miles(lat1: float, lon1: float, lat2: float, lon2: float)
 
 # MCP Chrome Bridge Wrapper
 class MCPChromeClient:
-    def __init__(self, config_path: str = "config/mcp_desktop_config.json", llm=None, num_links: int = 3):
+    def __init__(self, config_path: str = "config/mcp_desktop_config.json", llm=None, num_links: int = 1):
         self.config_path = config_path
         self.llm = llm  # LLM for intelligent navigation
         self.num_links = num_links  # Number of links to process
@@ -279,7 +282,7 @@ class MCPChromeClient:
         return search_results[:self.num_links]
     
     def _process_single_link(self, link_info: Dict, link_number: int, query: str, vessel_mmsi: str = "") -> WebSearchResult:
-        """Process a single link: navigate, extract content, save file, and use LLM to extract metadata."""
+        """Process a single link: navigate, extract content, save file, take screenshot, and use LLM to extract metadata."""
         try:
             # Click on the link
             click_result = self._call_mcp("chrome_click_element", {
@@ -302,6 +305,9 @@ class MCPChromeClient:
             # Get current URL
             current_url = self._get_current_url()
             
+            # Take screenshot after page is fully loaded
+            screenshot_path = self._capture_screenshot(link_number, vessel_mmsi, current_url)
+            
             # Extract page content
             raw_content = self._extract_page_content()
             
@@ -309,11 +315,12 @@ class MCPChromeClient:
                 print(f"⚠️ Insufficient content from link {link_number}")
                 return WebSearchResult(
                     url=current_url,
-                    content_snippet=f"Link {link_number}: Insufficient content"
+                    content_snippet=f"Link {link_number}: Insufficient content",
+                    metadata_extracted={"screenshot_path": screenshot_path}
                 )
             
-            # Save content to file
-            content_file = self._save_content_to_file(raw_content, link_number, vessel_mmsi)
+            # Save content to file with URL-based filename
+            content_file = self._save_content_to_file(raw_content, current_url, vessel_mmsi)
             
             # LLM Second Use: Extract comprehensive vessel metadata
             vessel_metadata = self._extract_vessel_metadata_with_llm(raw_content, query, current_url)
@@ -324,7 +331,11 @@ class MCPChromeClient:
                 title=link_info.get("text", "")[:100],
                 content_snippet=vessel_metadata,
                 images_found=[],  # Could be enhanced to extract images
-                metadata_extracted={"content_file": content_file}
+                metadata_extracted={
+                    "content_file": content_file,
+                    "screenshot_path": screenshot_path,
+                    "textContent": raw_content[:2000]  # Store first 2000 chars for descriptions
+                }
             )
             
         except Exception as e:
@@ -362,8 +373,8 @@ class MCPChromeClient:
                     raw_content = " ".join(content_parts)
         return raw_content
     
-    def _save_content_to_file(self, content: str, link_number: int, vessel_mmsi: str = "") -> str:
-        """Save content to local file in vessel-specific directory."""
+    def _save_content_to_file(self, content: str, url: str, vessel_mmsi: str = "") -> str:
+        """Save content to local file in vessel-specific directory with URL-based filename."""
         try:
             # Create vessel-specific folder structure
             if vessel_mmsi:
@@ -372,7 +383,10 @@ class MCPChromeClient:
                 search_dir = os.path.join("reports", "search_results")
                 
             os.makedirs(search_dir, exist_ok=True)
-            filename = os.path.join(search_dir, f"result{link_number}.html")
+            
+            # Generate URL-based filename
+            safe_filename = self._sanitize_url_for_filename(url)
+            filename = os.path.join(search_dir, f"{safe_filename}.html")
             
             with open(filename, "w", encoding="utf-8") as f:
                 f.write(content)
@@ -433,6 +447,7 @@ class MCPChromeClient:
         
         If information is not available, use null for that field.
         Respond with ONLY valid JSON, no additional text.
+        /no_think
         """
         
         try:
@@ -441,8 +456,9 @@ class MCPChromeClient:
                 ("user", metadata_prompt)
             ])
             
-            content_response = response.content.strip()
-            
+            # content_response = response.content.strip()
+            content_response = re.sub(r'<[^>]+>', '', response.content.strip())
+
             # Try to parse JSON and validate
             try:
                 vessel_data = json.loads(content_response)
@@ -526,6 +542,101 @@ class MCPChromeClient:
         except Exception as e:
             print(f"⚠️ Cookie dialog handling failed: {e}")
     
+    def _capture_screenshot(self, link_number: int, vessel_mmsi: str, url: str) -> str:
+        """Capture screenshot of current page and save to MMSI-specific folder."""
+        try:
+            print(f"📸 Capturing screenshot for link {link_number}...")
+            
+            # Take screenshot using MCP Chrome bridge
+            screenshot_result = self._call_mcp("chrome_screenshot", {
+                "format": "jpeg",
+                "quality": 85
+            })
+            
+            if "error" in screenshot_result:
+                print(f"⚠️ Screenshot capture failed: {screenshot_result['error']}")
+                return ""
+            
+            # Parse the screenshot result
+            if "result" in screenshot_result and "content" in screenshot_result["result"]:
+                content = screenshot_result["result"]["content"]
+                if content and len(content) > 0 and "text" in content[0]:
+                    try:
+                        screenshot_data = json.loads(content[0]["text"])
+                        
+                        if screenshot_data.get("success") and "fullPath" in screenshot_data:
+                            downloads_path = screenshot_data["fullPath"]
+                            
+                            # Check if file exists
+                            if os.path.exists(downloads_path):
+                                # Create destination directory
+                                if vessel_mmsi:
+                                    dest_dir = os.path.join("reports", "search_results", vessel_mmsi)
+                                else:
+                                    dest_dir = os.path.join("reports", "search_results")
+                                os.makedirs(dest_dir, exist_ok=True)
+                                
+                                # Generate destination filename
+                                dest_filename = f"screenshot_{link_number}.jpg"
+                                dest_path = os.path.join(dest_dir, dest_filename)
+                                
+                                # Move file from downloads to destination
+                                shutil.move(downloads_path, dest_path)
+                                
+                                print(f"✅ Screenshot saved to {dest_path}")
+                                return dest_path
+                            else:
+                                print(f"⚠️ Screenshot file not found at {downloads_path}")
+                        else:
+                            print(f"⚠️ Screenshot capture unsuccessful: {screenshot_data.get('message', 'Unknown error')}")
+                    
+                    except json.JSONDecodeError as e:
+                        print(f"⚠️ Failed to parse screenshot response: {e}")
+            
+            return ""
+            
+        except Exception as e:
+            print(f"⚠️ Screenshot capture failed with exception: {e}")
+            return ""
+    
+    def _sanitize_url_for_filename(self, url: str) -> str:
+        """Convert URL to safe filename by removing/replacing invalid characters."""
+        # Parse URL to get domain and path
+        try:
+            parsed = urllib.parse.urlparse(url)
+            domain = parsed.netloc.replace("www.", "")
+            path = parsed.path.strip("/")
+            
+            # Create base filename from domain and path
+            if path:
+                filename_base = f"{domain}_{path}"
+            else:
+                filename_base = domain
+            
+            # Remove or replace invalid characters
+            # Keep only alphanumeric, hyphens, underscores, and dots
+            safe_filename = re.sub(r'[^a-zA-Z0-9\-_\.]', '_', filename_base)
+            
+            # Remove multiple consecutive underscores
+            safe_filename = re.sub(r'_{2,}', '_', safe_filename)
+            
+            # Remove leading/trailing underscores
+            safe_filename = safe_filename.strip('_')
+            
+            # Limit length to avoid filesystem issues
+            if len(safe_filename) > 100:
+                safe_filename = safe_filename[:100]
+            
+            # Ensure we have a valid filename
+            if not safe_filename:
+                safe_filename = f"page_{hash(url) % 10000}"
+            
+            return safe_filename
+            
+        except Exception as e:
+            print(f"⚠️ URL sanitization failed: {e}")
+            return f"page_{hash(url) % 10000}"
+
 
 # Initialize MCP client with default parameters
 mcp_client = MCPChromeClient(num_links=3)

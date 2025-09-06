@@ -175,44 +175,57 @@ class VesselReportGenerator:
         }
         
         .data-item {
-            background: #1a1f2e;
-            border: 1px solid #334155;
-            padding: 4px 6px;
-            border-left: 2px solid #00ff88;
+            background: var(--ocean-panel);
+            border: 1px solid var(--ocean-border);
+            padding: 8px 10px;
+            border-left: 3px solid var(--ocean-teal);
+            border-radius: 4px;
+            transition: border-color 0.2s ease;
+        }
+        
+        .data-item:hover {
+            border-left-color: var(--ocean-blue);
         }
         
         .data-label {
-            color: #94a3b8;
+            color: var(--ocean-blue-muted);
             font-size: 10px;
             display: block;
             text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
         }
         
         .data-value {
-            color: #ffffff;
-            font-weight: bold;
-            font-size: 12px;
-            font-family: 'Courier New', monospace;
+            color: var(--ocean-deepest);
+            font-weight: 700;
+            font-size: 13px;
+            font-family: 'SF Mono', 'Monaco', monospace;
         }
         
         .map-toggle {
-            background: #001122;
-            border: 1px solid #00ff88;
-            color: #00ff88;
-            padding: 4px 8px;
-            margin: 4px 0;
+            background: var(--ocean-deepest);
+            border: 1px solid var(--ocean-teal);
+            color: var(--ocean-light);
+            padding: 10px 14px;
+            margin: 8px 0;
             cursor: pointer;
-            font-family: 'Consolas', monospace;
-            font-size: 11px;
+            font-family: 'SF Mono', 'Monaco', monospace;
+            font-size: 12px;
+            font-weight: 500;
             width: 100%;
             text-align: left;
             position: relative;
             overflow: hidden;
+            border-radius: 6px;
+            transition: all 0.2s ease;
         }
         
         .map-toggle:hover {
-            background: #002244;
-            box-shadow: 0 0 5px #00ff88;
+            background: var(--ocean-blue-muted);
+            border-color: var(--ocean-bright);
+            box-shadow: 0 4px 12px rgba(74, 144, 226, 0.2);
         }
         
         .map-toggle::before {
@@ -227,10 +240,12 @@ class VesselReportGenerator:
         
         .map-container {
             display: none;
-            margin: 4px 0;
-            border: 1px solid #334155;
+            margin: 8px 0;
+            border: 2px solid var(--ocean-border);
+            border-radius: 6px;
             height: 300px;
             overflow: hidden;
+            background: var(--ocean-panel);
         }
         
         .map-container.expanded {
@@ -245,25 +260,37 @@ class VesselReportGenerator:
         }
         
         .stat-box {
-            background: #0a0f1a;
-            border: 1px solid #334155;
-            padding: 4px;
+            background: var(--ocean-panel);
+            border: 1px solid var(--ocean-border);
+            padding: 8px 6px;
             text-align: center;
-            border-left: 2px solid #00ffff;
+            border-left: 3px solid var(--ocean-bright);
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+        
+        .stat-box:hover {
+            border-left-color: var(--ocean-success);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(26, 35, 50, 0.2);
         }
         
         .stat-number {
-            color: #00ffff;
-            font-weight: bold;
-            font-size: 14px;
+            color: var(--ocean-deepest);
+            font-weight: 700;
+            font-size: 16px;
             display: block;
-            text-shadow: 0 0 3px #00ffff;
+            text-shadow: none;
+            font-family: 'SF Mono', monospace;
         }
         
         .stat-label {
-            color: #94a3b8;
+            color: var(--ocean-blue-muted);
             font-size: 9px;
             text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            margin-top: 2px;
         }
         
         .photos-compact {
@@ -287,59 +314,69 @@ class VesselReportGenerator:
         }
         
         .research-compact {
-            background: #1a1f2e;
-            border: 1px solid #334155;
-            padding: 6px;
-            margin: 4px 0;
-            border-left: 2px solid #ff6600;
+            background: var(--ocean-panel);
+            border: 1px solid var(--ocean-border);
+            padding: 12px;
+            margin: 8px 0;
+            border-left: 3px solid var(--ocean-warning);
+            border-radius: 6px;
         }
         
         .research-title {
-            color: #ff6600;
-            font-size: 11px;
-            font-weight: bold;
-            margin-bottom: 2px;
+            color: var(--ocean-warning);
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 6px;
         }
         
         .research-snippet {
-            color: #94a3b8;
-            font-size: 10px;
-            line-height: 1.1;
+            color: var(--ocean-deepest);
+            font-size: 11px;
+            line-height: 1.4;
         }
 
         /* Enhanced tabbed interface for multiple research results */
         .research-tabs {
-            background: #1a1f2e;
-            border: 1px solid #334155;
-            margin: 4px 0;
+            background: var(--ocean-panel);
+            border: 1px solid var(--ocean-border);
+            margin: 8px 0;
+            border-radius: 6px;
+            overflow: hidden;
         }
 
         .tab-headers {
             display: flex;
-            background: #0f1419;
-            border-bottom: 1px solid #334155;
+            background: var(--ocean-darker);
+            border-bottom: 1px solid var(--ocean-border);
         }
 
         .tab-btn {
             flex: 1;
             background: transparent;
             border: none;
-            color: #94a3b8;
-            padding: 6px 4px;
+            color: var(--ocean-medium);
+            padding: 10px 8px;
             cursor: pointer;
             font-family: inherit;
-            font-size: 10px;
-            border-right: 1px solid #334155;
+            font-size: 11px;
+            font-weight: 500;
+            border-right: 1px solid var(--ocean-border);
             position: relative;
+            transition: all 0.2s ease;
         }
 
         .tab-btn:last-child {
             border-right: none;
         }
 
+        .tab-btn:hover {
+            background: var(--ocean-blue-muted);
+            color: var(--ocean-light);
+        }
+
         .tab-btn.active {
-            background: #1a1f2e;
-            color: #00ff88;
+            background: var(--ocean-blue);
+            color: var(--ocean-light);
         }
 
         .status-dot {
@@ -350,10 +387,10 @@ class VesselReportGenerator:
             margin-left: 4px;
         }
 
-        .status-success { background: #00ff88; }
-        .status-partial { background: #ffaa00; }
-        .status-failed { background: #ff4444; }
-        .status-unknown { background: #666; }
+        .status-success { background: var(--ocean-success); }
+        .status-partial { background: var(--ocean-warning); }
+        .status-failed { background: var(--ocean-error); }
+        .status-unknown { background: var(--ocean-border); }
 
         .tab-content {
             padding: 6px;
@@ -363,16 +400,17 @@ class VesselReportGenerator:
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 4px 6px;
-            border-bottom: 1px solid #334155;
-            background: #0a0f1a;
-            margin-bottom: 6px;
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--ocean-border);
+            background: var(--ocean-darker);
+            margin-bottom: 8px;
         }
 
         .source-url {
-            color: #00ffff;
+            color: var(--ocean-bright);
             text-decoration: none;
-            font-size: 10px;
+            font-size: 11px;
+            font-weight: 500;
             flex: 1;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -381,55 +419,108 @@ class VesselReportGenerator:
 
         .source-url:hover {
             text-decoration: underline;
+            color: var(--ocean-success);
         }
 
         .reliability-badge {
-            background: #001122;
-            color: #00ff88;
-            padding: 2px 4px;
-            font-size: 8px;
-            border: 1px solid #00ff88;
-            border-radius: 2px;
+            background: var(--ocean-teal-dark);
+            color: var(--ocean-light);
+            padding: 4px 8px;
+            font-size: 9px;
+            font-weight: 500;
+            border: 1px solid var(--ocean-teal);
+            border-radius: 4px;
         }
 
         .metadata-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-            gap: 4px;
-            padding: 6px 0;
-            background: #0a0f1a;
-            margin-bottom: 6px;
+            gap: 6px;
+            padding: 8px 0;
+            background: var(--ocean-darker);
+            margin-bottom: 8px;
         }
 
         .metadata-item {
-            background: #1a1f2e;
-            border: 1px solid #334155;
-            padding: 3px 4px;
-            border-left: 2px solid #00ff88;
+            background: var(--ocean-panel);
+            border: 1px solid var(--ocean-border);
+            padding: 6px 8px;
+            border-left: 2px solid var(--ocean-teal);
+            border-radius: 4px;
         }
 
         .metadata-label {
-            color: #00ff88;
-            font-size: 8px;
-            font-weight: bold;
+            color: var(--ocean-blue);
+            font-size: 9px;
+            font-weight: 600;
             display: block;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
         }
 
         .metadata-value {
-            color: #94a3b8;
-            font-size: 9px;
+            color: var(--ocean-deepest);
+            font-size: 10px;
+            font-weight: 500;
             display: block;
-            margin-top: 1px;
+            margin-top: 2px;
+        }
+
+        /* Screenshot display styling */
+        .screenshot-container {
+            background: var(--ocean-darker);
+            border: 1px solid var(--ocean-border);
+            margin: 8px 0;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .screenshot-label {
+            background: var(--ocean-deepest);
+            color: var(--ocean-warning);
+            padding: 6px 12px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid var(--ocean-border);
+        }
+
+        .screenshot-image {
+            width: 100%;
+            max-width: 300px;
+            height: auto;
+            max-height: 200px;
+            object-fit: contain;
+            border: 2px solid var(--ocean-border);
+            border-radius: 4px;
+            margin: 8px;
+            cursor: pointer;
+            transition: border-color 0.2s ease;
+        }
+
+        .screenshot-image:hover {
+            border-color: var(--ocean-teal);
+            box-shadow: 0 0 8px rgba(44, 154, 160, 0.3);
+        }
+
+        .screenshot-unavailable {
+            padding: 12px;
+            text-align: center;
+            color: var(--ocean-medium);
+            font-size: 11px;
+            font-style: italic;
         }
         
         .footer {
-            background: #001122;
-            border-top: 1px solid #00ff88;
-            padding: 6px 8px;
-            margin-top: 8px;
+            background: var(--ocean-deepest);
+            border-top: 1px solid var(--ocean-teal);
+            padding: 12px 16px;
+            margin-top: 12px;
             text-align: center;
-            color: #94a3b8;
-            font-size: 10px;
+            color: var(--ocean-medium);
+            font-size: 11px;
+            border-radius: 0 0 8px 8px;
         }
         
         .terminal-cursor {
@@ -445,21 +536,21 @@ class VesselReportGenerator:
         }
         
         .scrollbar-custom::-webkit-scrollbar-track {
-            background: #0a0e1a;
+            background: var(--ocean-darker);
         }
         
         .scrollbar-custom::-webkit-scrollbar-thumb {
-            background: #334155;
+            background: var(--ocean-border);
             border-radius: 4px;
         }
         
         .scrollbar-custom::-webkit-scrollbar-thumb:hover {
-            background: #00ff88;
+            background: var(--ocean-teal);
         }
         
         .column {
             scrollbar-width: thin;
-            scrollbar-color: #334155 #0a0e1a;
+            scrollbar-color: var(--ocean-border) var(--ocean-darker);
         }
         
         @media (max-width: 1200px) {
@@ -478,6 +569,13 @@ class VesselReportGenerator:
             }
             .stats-row {
                 grid-template-columns: repeat(2, 1fr);
+            }
+            .screenshot-image {
+                max-width: 100%;
+                max-height: 150px;
+            }
+            .metadata-grid {
+                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -710,7 +808,7 @@ class VesselReportGenerator:
                             <div class="metadata-grid">
                                 {% set metadata = result.metadata_extracted %}
                                 {% if metadata and metadata != 'error' %}
-                                    {% for key, value in metadata.items() if value and key not in ['status', 'reliability'] %}
+                                    {% for key, value in metadata.items() if value and key not in ['status', 'reliability', 'screenshot_path', 'content_file'] %}
                                     <div class="metadata-item">
                                         <span class="metadata-label">{{ key.replace('_', ' ').upper() }}</span>
                                         <span class="metadata-value">{{ value }}</span>
@@ -720,7 +818,28 @@ class VesselReportGenerator:
                             </div>
                             {% endif %}
                             
-                            <div class="research-snippet">{{ result.content_snippet[:300] }}...</div>
+                            <!-- Screenshot Display Section -->
+                            <div class="screenshot-container">
+                                <div class="screenshot-label">PAGE SCREENSHOT</div>
+                                {% if result.metadata_extracted and result.metadata_extracted.get('screenshot_path') %}
+                                    <img src="{{ result.metadata_extracted.get('screenshot_path') }}" 
+                                         alt="Page Screenshot" 
+                                         class="screenshot-image" 
+                                         onclick="showPhotoModal('{{ result.metadata_extracted.get('screenshot_path') }}')"
+                                         onerror="this.parentNode.querySelector('.screenshot-unavailable').style.display='block'; this.style.display='none';">
+                                    <div class="screenshot-unavailable" style="display:none;">Screenshot failed to load</div>
+                                {% else %}
+                                    <div class="screenshot-unavailable">No screenshot available</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="research-snippet">
+                                {% if result.metadata_extracted and result.metadata_extracted.get('textContent') %}
+                                    {{ result.metadata_extracted.get('textContent')[:450] }}...
+                                {% else %}
+                                    {{ result.content_snippet[:300] }}...
+                                {% endif %}
+                            </div>
                         </div>
                         {% endfor %}
                     </div>
@@ -756,13 +875,13 @@ class VesselReportGenerator:
             tiles="OpenStreetMap"
         )
 
-        # Add track line
+        # Add track line with ocean-inspired colors
         track_coords = [[point["lat"], point["lon"]] for point in vessel.track_points]
         folium.PolyLine(
             locations=track_coords,
-            color="blue",
-            weight=3,
-            opacity=0.8,
+            color="#4a90e2",  # Ocean blue
+            weight=4,
+            opacity=0.9,
             popup=f"{vessel.vessel_name} Track"
         ).add_to(m)
 
@@ -789,16 +908,21 @@ class VesselReportGenerator:
             point = vessel.track_points[i]
             folium.CircleMarker(
                 [point["lat"], point["lon"]],
-                radius=4,
+                radius=5,
                 popup=f"Time: {point['timestamp']}<br>Speed: {point.get('sog', 0)} knots",
-                color="orange",
-                fillColor="orange",
-                fillOpacity=0.7
+                color="#2c9aa0",  # Ocean teal
+                fillColor="#60a5fa",  # Ocean bright
+                fillOpacity=0.8
             ).add_to(m)
 
-        # Add heatmap plugin for density
+        # Add heatmap plugin with ocean-inspired gradient
         heat_data = [[point["lat"], point["lon"]] for point in vessel.track_points]
-        plugins.HeatMap(heat_data, radius=15, blur=10, gradient={0.2: 'blue', 0.4: 'lime', 0.6: 'orange', 1: 'red'}).add_to(m)
+        plugins.HeatMap(
+            heat_data, 
+            radius=15, 
+            blur=12, 
+            gradient={0.2: '#2c9aa0', 0.4: '#4a90e2', 0.6: '#60a5fa', 1: '#06b6d4'}
+        ).add_to(m)
 
         # Fit map to track bounds
         sw = [min(lats), min(lons)]
