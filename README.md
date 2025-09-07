@@ -2,6 +2,8 @@
 
 A **prompt-driven multi-agent system** that generates comprehensive vessel analysis reports by combining AIS tracking data with automated web research. Built with LangChain/LangGraph and featuring interactive visualizations.
 
+[View Sample Multi-Vessel Report](https://beefkknd.github.io/myfirst_agent/reports/multi_vessel_report_3_vessels.html)
+
 ## 🎯 Overview
 
 This system analyzes vessel movements from Elasticsearch AIS data, conducts automated web research using MCP Chrome bridge, and generates beautiful HTML reports with interactive maps. Perfect for maritime analysis, vessel tracking research, and operational intelligence.
