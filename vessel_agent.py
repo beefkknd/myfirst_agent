@@ -6,16 +6,16 @@ from langchain_ollama import ChatOllama
 from langgraph.graph import END, StateGraph
 from langgraph.prebuilt import ToolNode
 
-from models import AnalysisPrompt, AnalysisState, VesselCriteria, WebResearchConfig, ReportConfig, PromptObjective
-from report_generator import VesselReportGenerator
-from tools import search_vessels_by_distance, web_research_vessel, download_vessel_image
+# Import from new modular structure
+from app.models import AnalysisPrompt, AnalysisState, VesselCriteria, WebResearchConfig, ReportConfig, PromptObjective
+from app.tools import ReportWriter, ElasticsearchService, ChromeMCPClient
+from app.services import VesselSearchService, WebResearchService
 
 load_dotenv()
 
 class VesselAnalysisAgent:
     def __init__(self, model_type: str = "ollama"):
         self.model_type = model_type
-        self.report_generator = VesselReportGenerator()
         
         # Initialize LLM based on type
         if model_type.lower() == "ollama":
@@ -23,64 +23,121 @@ class VesselAnalysisAgent:
         else:  # gemini
             self.llm = ChatOllama(model="qwen3:8b", temperature=0.1)
         
-        # Tools
-        self.tools = [search_vessels_by_distance, web_research_vessel, download_vessel_image]
+        # Initialize services with LLM
+        self.report_writer = ReportWriter()
+        self.vessel_search_service = VesselSearchService()
+        self.web_research_service = WebResearchService(llm=self.llm)
+        
+        # Create tool functions for LangGraph
+        self.tools = [self._search_vessels_tool(), self._research_vessel_tool(), self._download_image_tool()]
         self.tool_node = ToolNode(self.tools)
         self.llm_with_tools = self.llm.bind_tools(self.tools)
-        
-        # Initialize MCP client with LLM for intelligent navigation
-        from tools import mcp_client
-        mcp_client.llm = self.llm
         
         # Build graph
         self.workflow = self._build_workflow()
         self.app = self.workflow.compile()
+    
+    # Tool Functions for LangGraph
+    def _search_vessels_tool(self):
+        """Tool function for vessel search"""
+        from langchain_core.tools import tool
+        
+        @tool
+        def search_vessels_by_distance(min_distance_miles: float = 50.0, date: str = "2022-01-01"):
+            """Search for vessels with long tracks using optimized Elasticsearch aggregations."""
+            return self.vessel_search_service.find_long_distance_vessels(
+                min_distance_miles=min_distance_miles,
+                date=date,
+                max_vessels=10
+            )
+        return search_vessels_by_distance
+    
+    def _research_vessel_tool(self):
+        """Tool function for vessel research"""
+        from langchain_core.tools import tool
+        
+        @tool
+        def web_research_vessel(vessel_name: str, mmsi: str, imo: str = "", research_focus: str = "specifications"):
+            """Research vessel information using multi-step LLM-guided web search."""
+            from app.models.vessel import VesselData
+            vessel = VesselData(mmsi=mmsi, vessel_name=vessel_name, imo=imo)
+            return self.web_research_service.research_vessel(
+                vessel=vessel,
+                research_focus=research_focus,
+                num_sources=3
+            )
+        return web_research_vessel
+    
+    def _download_image_tool(self):
+        """Tool function for image download"""
+        from langchain_core.tools import tool
+        import requests
+        import os
+        
+        @tool
+        def download_vessel_image(image_url: str, vessel_name: str) -> str:
+            """Download vessel image from URL."""
+            try:
+                response = requests.get(image_url, stream=True, timeout=10)
+                if response.status_code == 200:
+                    os.makedirs("reports/images", exist_ok=True)
+                    safe_name = "".join(c for c in vessel_name if c.isalnum() or c in (' ', '-', '_')).rstrip()
+                    filename = f"reports/images/{safe_name}_{hash(image_url) % 10000}.jpg"
+                    
+                    with open(filename, "wb") as f:
+                        for chunk in response.iter_content(chunk_size=8192):
+                            f.write(chunk)
+                    return filename
+            except Exception as e:
+                return f"Download failed: {str(e)}"
+            return "Download failed"
+        return download_vessel_image
 
     def _build_workflow(self) -> StateGraph:
         """Build the LangGraph workflow with LLM-driven decision points."""
         workflow = StateGraph(AnalysisState)
         
-        # Add nodes
-        workflow.add_node("parse_prompt", self.parse_prompt_node)
-        workflow.add_node("fetch_tracks", self.fetch_tracks_node)
-        workflow.add_node("internet_search", self.internet_search_node)
-        workflow.add_node("evaluate_info", self.evaluate_info_node)
-        workflow.add_node("write_report", self.write_report_node)
-        workflow.add_node("review_report", self.review_report_node)
-        workflow.add_node("publish_report", self.publish_report_node)
+        # Add nodes with node_ prefix
+        workflow.add_node("node_parse_prompt", self.node_parse_prompt)
+        workflow.add_node("node_fetch_tracks", self.node_fetch_tracks)
+        workflow.add_node("node_internet_search", self.node_internet_search)
+        workflow.add_node("node_evaluate_info", self.node_evaluate_info)
+        workflow.add_node("node_write_report", self.node_write_report)
+        workflow.add_node("node_review_report", self.node_review_report)
+        workflow.add_node("node_publish_report", self.node_publish_report)
         workflow.add_node("tool_node", self.tool_node)
         
         # Set entry point
-        workflow.set_entry_point("parse_prompt")
+        workflow.set_entry_point("node_parse_prompt")
         
         # Sequential flow to evaluation point
-        workflow.add_edge("parse_prompt", "fetch_tracks")
-        workflow.add_edge("fetch_tracks", "internet_search")
-        workflow.add_edge("internet_search", "evaluate_info")
+        workflow.add_edge("node_parse_prompt", "node_fetch_tracks")
+        workflow.add_edge("node_fetch_tracks", "node_internet_search")
+        workflow.add_edge("node_internet_search", "node_evaluate_info")
         
         # LLM decision point: continue or need more research
         workflow.add_conditional_edges(
-            "evaluate_info",
+            "node_evaluate_info",
             self.llm_decide_next_step,
             {
-                "write_report": "write_report",
-                "more_research": "internet_search",  # Cycle back for more research
-                "different_vessel": "fetch_tracks",  # Try different vessel
+                "write_report": "node_write_report",
+                "more_research": "node_internet_search",  # Cycle back for more research
+                "different_vessel": "node_fetch_tracks",  # Try different vessel
                 "end": END
             }
         )
         
         # Report generation flow
-        workflow.add_edge("write_report", "review_report")
-        workflow.add_edge("review_report", "publish_report")
-        workflow.add_edge("publish_report", END)
+        workflow.add_edge("node_write_report", "node_review_report")
+        workflow.add_edge("node_review_report", "node_publish_report")
+        workflow.add_edge("node_publish_report", END)
         
         # Tool usage (simplified)
-        workflow.add_edge("tool_node", "write_report")
+        workflow.add_edge("tool_node", "node_write_report")
         
         return workflow
 
-    def parse_prompt_node(self, state: AnalysisState) -> AnalysisState:
+    def node_parse_prompt(self, state: AnalysisState) -> AnalysisState:
         """LLM-driven parsing of structured prompt into analysis configuration."""
         print("🔍 LLM parsing analysis prompt...")
         
@@ -164,17 +221,21 @@ class VesselAnalysisAgent:
                 report_config=ReportConfig(include_map=True, include_photos=True)
             )
         
-        state.current_step = "fetch_tracks"
+        state.current_step = "node_fetch_tracks"
         return state
 
-    def fetch_tracks_node(self, state: AnalysisState) -> AnalysisState:
+    def node_fetch_tracks(self, state: AnalysisState) -> AnalysisState:
         """Fetch vessel tracks from Elasticsearch."""
         print("🚢 Fetching vessel tracks from Elasticsearch...")
         
         try:
-            # Use the tool to search vessels
+            # Use the service to search vessels
             min_distance = state.prompt.vessel_criteria.min_distance_miles
-            vessels = search_vessels_by_distance.invoke({"min_distance_miles": min_distance})
+            vessels = self.vessel_search_service.find_long_distance_vessels(
+                min_distance_miles=min_distance,
+                date="2022-01-01",
+                max_vessels=5
+            )
             
             state.selected_vessels = vessels[:5]  # Top 5 vessels
             print(f"Found {len(state.selected_vessels)} vessels with long tracks")
@@ -186,10 +247,10 @@ class VesselAnalysisAgent:
             state.errors.append(f"Error fetching tracks: {str(e)}")
             print(f"❌ Error: {e}")
         
-        state.current_step = "internet_search"
+        state.current_step = "node_internet_search"
         return state
 
-    def internet_search_node(self, state: AnalysisState) -> AnalysisState:
+    def node_internet_search(self, state: AnalysisState) -> AnalysisState:
         """Research ALL vessels using web search with multi-vessel processing."""
         print("🌐 Researching vessels on the internet...")
         
@@ -201,56 +262,43 @@ class VesselAnalysisAgent:
         if not hasattr(state, 'vessel_research_results'):
             state.vessel_research_results = {}
         
-        # Process ALL vessels in state.selected_vessels
-        total_vessels = len(state.selected_vessels)
-        successful_research = 0
-        
-        for i, vessel in enumerate(state.selected_vessels, 1):
-            print(f"🚢 Researching vessel {i}/{total_vessels}: {vessel.vessel_name} (MMSI: {vessel.mmsi})")
+        # Use the web research service for multi-vessel research
+        try:
+            research_focus = getattr(state.prompt.web_research, 'research_focus', 'specifications')
+            num_sources = getattr(state.prompt.web_research, 'max_pages', 3)
             
-            try:
-                # Get research focus from LLM-parsed prompt
-                research_focus = getattr(state.prompt.web_research, 'research_focus', 'specifications')
-                
-                research_results = web_research_vessel.invoke({
-                    "vessel_name": vessel.vessel_name,
-                    "mmsi": vessel.mmsi,
-                    "imo": vessel.imo or "",
-                    "research_focus": research_focus
-                })
-                
-                # Store results in vessel-specific collection
-                state.vessel_research_results[vessel.mmsi] = research_results
-                print(f"✅ Research complete for {vessel.vessel_name} - found {len(research_results)} sources")
-                successful_research += 1
-                
-                # Download images for this vessel (simplified)
-                for result in research_results:
-                    for img_url in result.images_found[:1]:  # Max 1 per source
-                        download_result = download_vessel_image.invoke({
-                            "image_url": img_url,
-                            "vessel_name": vessel.vessel_name
-                        })
-                        if download_result and not download_result.startswith("Download failed"):
-                            print(f"📷 Downloaded image for {vessel.vessel_name}: {download_result}")
-                
-                # Maintain backward compatibility by updating web_research_results with first vessel
-                if i == 1:  # First vessel
-                    state.web_research_results = research_results
-                            
-            except Exception as e:
-                error_msg = f"Research error for {vessel.vessel_name} (MMSI: {vessel.mmsi}): {str(e)}"
-                state.errors.append(error_msg)
-                print(f"❌ {error_msg}")
-                # Continue processing other vessels even if one fails
-                continue
+            # Research all vessels using the service
+            vessel_research_results = self.web_research_service.research_multiple_vessels(
+                vessels=state.selected_vessels,
+                research_focus=research_focus,
+                num_sources=num_sources
+            )
+            
+            # Update state with results
+            state.vessel_research_results = vessel_research_results
+            
+            # Maintain backward compatibility with first vessel
+            if vessel_research_results and state.selected_vessels:
+                first_vessel_mmsi = state.selected_vessels[0].mmsi
+                if first_vessel_mmsi in vessel_research_results:
+                    state.web_research_results = vessel_research_results[first_vessel_mmsi]
+            
+            successful_research = len(vessel_research_results)
+            total_vessels = len(state.selected_vessels)
+            
+        except Exception as e:
+            error_msg = f"Multi-vessel research failed: {str(e)}"
+            state.errors.append(error_msg)
+            print(f"❌ {error_msg}")
+            successful_research = 0
+            total_vessels = len(state.selected_vessels)
         
         print(f"🎯 Multi-vessel research complete: {successful_research}/{total_vessels} vessels successfully researched")
         
-        state.current_step = "evaluate_info"
+        state.current_step = "node_evaluate_info"
         return state
 
-    def evaluate_info_node(self, state: AnalysisState) -> AnalysisState:
+    def node_evaluate_info(self, state: AnalysisState) -> AnalysisState:
         """LLM evaluates information sufficiency and decides next action."""
         print("🧠 LLM evaluating information sufficiency...")
         
@@ -317,12 +365,12 @@ class VesselAnalysisAgent:
         """Return the LLM's decision for workflow routing."""
         return getattr(state, 'llm_decision', 'write_report')
 
-    def write_report_node(self, state: AnalysisState) -> AnalysisState:
+    def node_write_report(self, state: AnalysisState) -> AnalysisState:
         """Generate the vessel analysis report."""
         print("📝 Writing vessel analysis report...")
         
         try:
-            report_path = self.report_generator.generate_report(state)
+            report_path = self.report_writer.generate_report(state)
             state.report_path = report_path
             print(f"✅ Report generated: {report_path}")
             
@@ -330,10 +378,10 @@ class VesselAnalysisAgent:
             state.errors.append(f"Report generation error: {str(e)}")
             print(f"❌ Report error: {e}")
         
-        state.current_step = "review_report"
+        state.current_step = "node_review_report"
         return state
 
-    def review_report_node(self, state: AnalysisState) -> AnalysisState:
+    def node_review_report(self, state: AnalysisState) -> AnalysisState:
         """Review and validate the generated report."""
         print("🔍 Reviewing report quality...")
         
@@ -347,10 +395,10 @@ class VesselAnalysisAgent:
         else:
             state.errors.append("Report file not found")
             
-        state.current_step = "publish_report"
+        state.current_step = "node_publish_report"
         return state
 
-    def publish_report_node(self, state: AnalysisState) -> AnalysisState:
+    def node_publish_report(self, state: AnalysisState) -> AnalysisState:
         """Finalize and publish the report."""
         print("🚀 Publishing report...")
         
