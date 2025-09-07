@@ -18,22 +18,24 @@ class VesselReportGenerator:
     <title>MARITIME CONTROL SYSTEM - {{ vessels|length }} Vessel(s) Analysis</title>
     <style>
         :root {
-            /* Ocean-inspired color palette */
-            --ocean-dark: #1a2332;
-            --ocean-darker: #141b26;
-            --ocean-deepest: #0f141d;
-            --ocean-blue: #4a90e2;
-            --ocean-blue-muted: #3674b8;
-            --ocean-teal: #2c9aa0;
-            --ocean-teal-dark: #1e6b70;
-            --ocean-light: #e8f1f8;
-            --ocean-medium: #b8c8d9;
-            --ocean-panel: #f7fafc;
-            --ocean-border: #4a5568;
-            --ocean-bright: #60a5fa;
-            --ocean-success: #06b6d4;
-            --ocean-warning: #f59e0b;
-            --ocean-error: #ef4444;
+            /* Deep Navy Gray with Aqua Accents */
+            --navy-deepest: #0c1118;
+            --navy-darker: #15232F;
+            --navy-dark: #1a2a38;
+            --navy-medium: #233645;
+            --navy-light: #2d4152;
+            --text-primary: #E6EEF2;
+            --text-secondary: #B8C8D4;
+            --text-muted: #8A9BA8;
+            --aqua-bright: #2CA6D9;
+            --aqua-medium: #2690C2;
+            --aqua-dark: #1F7BA8;
+            --aqua-muted: #4CB8E6;
+            --panel-bg: #15232F;
+            --panel-border: #233645;
+            --success: #00D4AA;
+            --warning: #FFB020;
+            --error: #FF5A5A;
         }
 
         * {
@@ -44,8 +46,8 @@ class VesselReportGenerator:
         
         body {
             font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Consolas', monospace;
-            background: var(--ocean-dark);
-            color: var(--ocean-light);
+            background: var(--navy-darker);
+            color: var(--text-primary);
             line-height: 1.4;
             font-size: 13px;
             overflow-x: auto;
@@ -57,13 +59,13 @@ class VesselReportGenerator:
         }
         
         .header {
-            background: linear-gradient(90deg, var(--ocean-deepest) 0%, var(--ocean-darker) 50%, var(--ocean-deepest) 100%);
-            border: 1px solid var(--ocean-teal);
+            background: linear-gradient(90deg, var(--navy-deepest) 0%, var(--navy-darker) 50%, var(--navy-deepest) 100%);
+            border: 1px solid var(--aqua-bright);
             padding: 12px 16px;
             margin-bottom: 12px;
             position: relative;
             overflow: hidden;
-            box-shadow: 0 2px 8px rgba(26, 35, 50, 0.3);
+            box-shadow: 0 2px 8px rgba(12, 17, 24, 0.4);
         }
         
         .header::before {
@@ -73,7 +75,7 @@ class VesselReportGenerator:
             left: -100%;
             width: 100%;
             height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(44, 154, 160, 0.1), transparent);
+            background: linear-gradient(90deg, transparent, rgba(44, 166, 217, 0.15), transparent);
             animation: scan 4s linear infinite;
         }
         
@@ -83,15 +85,15 @@ class VesselReportGenerator:
         }
         
         .header h1 {
-            color: var(--ocean-bright);
+            color: var(--aqua-bright);
             font-size: 20px;
             font-weight: 600;
-            text-shadow: 0 0 8px rgba(96, 165, 250, 0.3);
+            text-shadow: 0 0 8px rgba(44, 166, 217, 0.4);
             letter-spacing: 1.5px;
         }
         
         .header .status {
-            color: var(--ocean-medium);
+            color: var(--text-secondary);
             font-size: 12px;
             margin-top: 4px;
             font-weight: 500;
@@ -105,18 +107,18 @@ class VesselReportGenerator:
         }
         
         .column {
-            background: var(--ocean-darker);
-            border: 1px solid var(--ocean-border);
+            background: var(--navy-darker);
+            border: 1px solid var(--panel-border);
             border-radius: 8px;
             overflow-y: auto;
-            box-shadow: 0 4px 12px rgba(15, 20, 29, 0.4);
+            box-shadow: 0 4px 12px rgba(12, 17, 24, 0.5);
         }
         
         .column-header {
-            background: var(--ocean-deepest);
-            border-bottom: 2px solid var(--ocean-teal);
+            background: var(--navy-deepest);
+            border-bottom: 2px solid var(--aqua-bright);
             padding: 12px 16px;
-            color: var(--ocean-bright);
+            color: var(--aqua-bright);
             font-weight: 600;
             font-size: 13px;
             text-transform: uppercase;
@@ -128,7 +130,7 @@ class VesselReportGenerator:
         }
         
         .vessel-block {
-            border-bottom: 1px solid var(--ocean-border);
+            border-bottom: 1px solid var(--panel-border);
             padding: 16px;
             margin-bottom: 8px;
             position: relative;
@@ -136,8 +138,8 @@ class VesselReportGenerator:
         }
         
         .vessel-block:hover {
-            background: var(--ocean-dark);
-            border-left: 4px solid var(--ocean-teal);
+            background: var(--navy-dark);
+            border-left: 4px solid var(--aqua-bright);
             transform: translateX(2px);
         }
         
@@ -147,22 +149,22 @@ class VesselReportGenerator:
             align-items: center;
             margin-bottom: 12px;
             padding-bottom: 8px;
-            border-bottom: 1px solid var(--ocean-border);
+            border-bottom: 1px solid var(--panel-border);
         }
         
         .vessel-name {
-            color: var(--ocean-bright);
+            color: var(--aqua-bright);
             font-weight: 600;
             font-size: 16px;
-            text-shadow: 0 0 6px rgba(96, 165, 250, 0.2);
+            text-shadow: 0 0 6px rgba(44, 166, 217, 0.3);
         }
         
         .vessel-status {
-            color: var(--ocean-light);
+            color: var(--text-primary);
             font-size: 11px;
-            background: var(--ocean-teal-dark);
+            background: var(--aqua-dark);
             padding: 4px 8px;
-            border: 1px solid var(--ocean-teal);
+            border: 1px solid var(--aqua-bright);
             border-radius: 4px;
             font-weight: 500;
         }
@@ -175,20 +177,20 @@ class VesselReportGenerator:
         }
         
         .data-item {
-            background: var(--ocean-panel);
-            border: 1px solid var(--ocean-border);
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
             padding: 8px 10px;
-            border-left: 3px solid var(--ocean-teal);
+            border-left: 3px solid var(--aqua-bright);
             border-radius: 4px;
             transition: border-color 0.2s ease;
         }
         
         .data-item:hover {
-            border-left-color: var(--ocean-blue);
+            border-left-color: var(--aqua-medium);
         }
         
         .data-label {
-            color: var(--ocean-blue-muted);
+            color: var(--aqua-medium);
             font-size: 10px;
             display: block;
             text-transform: uppercase;
@@ -198,16 +200,16 @@ class VesselReportGenerator:
         }
         
         .data-value {
-            color: var(--ocean-deepest);
+            color: var(--text-primary);
             font-weight: 700;
             font-size: 13px;
             font-family: 'SF Mono', 'Monaco', monospace;
         }
         
         .map-toggle {
-            background: var(--ocean-deepest);
-            border: 1px solid var(--ocean-teal);
-            color: var(--ocean-light);
+            background: var(--navy-deepest);
+            border: 1px solid var(--aqua-bright);
+            color: var(--text-primary);
             padding: 10px 14px;
             margin: 8px 0;
             cursor: pointer;
@@ -223,9 +225,9 @@ class VesselReportGenerator:
         }
         
         .map-toggle:hover {
-            background: var(--ocean-blue-muted);
-            border-color: var(--ocean-bright);
-            box-shadow: 0 4px 12px rgba(74, 144, 226, 0.2);
+            background: var(--aqua-medium);
+            border-color: var(--aqua-muted);
+            box-shadow: 0 4px 12px rgba(44, 166, 217, 0.3);
         }
         
         .map-toggle::before {
@@ -241,11 +243,11 @@ class VesselReportGenerator:
         .map-container {
             display: none;
             margin: 8px 0;
-            border: 2px solid var(--ocean-border);
+            border: 2px solid var(--panel-border);
             border-radius: 6px;
             height: 300px;
             overflow: hidden;
-            background: var(--ocean-panel);
+            background: var(--panel-bg);
         }
         
         .map-container.expanded {
@@ -260,23 +262,23 @@ class VesselReportGenerator:
         }
         
         .stat-box {
-            background: var(--ocean-panel);
-            border: 1px solid var(--ocean-border);
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
             padding: 8px 6px;
             text-align: center;
-            border-left: 3px solid var(--ocean-bright);
+            border-left: 3px solid var(--aqua-bright);
             border-radius: 4px;
             transition: all 0.2s ease;
         }
         
         .stat-box:hover {
-            border-left-color: var(--ocean-success);
+            border-left-color: var(--success);
             transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(26, 35, 50, 0.2);
+            box-shadow: 0 4px 8px rgba(12, 17, 24, 0.3);
         }
         
         .stat-number {
-            color: var(--ocean-deepest);
+            color: var(--text-primary);
             font-weight: 700;
             font-size: 16px;
             display: block;
@@ -285,7 +287,7 @@ class VesselReportGenerator:
         }
         
         .stat-label {
-            color: var(--ocean-blue-muted);
+            color: var(--aqua-medium);
             font-size: 9px;
             text-transform: uppercase;
             font-weight: 600;
@@ -304,41 +306,93 @@ class VesselReportGenerator:
             width: 100%;
             height: 60px;
             object-fit: cover;
-            border: 1px solid #334155;
+            border: 1px solid var(--panel-border);
+            border-radius: 4px;
             cursor: pointer;
+            transition: all 0.2s ease;
         }
         
         .photo-thumb:hover {
-            border-color: #00ff88;
-            box-shadow: 0 0 5px #00ff88;
+            border-color: var(--aqua-bright);
+            box-shadow: 0 0 8px rgba(44, 166, 217, 0.5);
         }
         
         .research-compact {
-            background: var(--ocean-panel);
-            border: 1px solid var(--ocean-border);
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
             padding: 12px;
             margin: 8px 0;
-            border-left: 3px solid var(--ocean-warning);
+            border-left: 3px solid var(--warning);
             border-radius: 6px;
         }
         
         .research-title {
-            color: var(--ocean-warning);
+            color: var(--warning);
             font-size: 12px;
             font-weight: 600;
             margin-bottom: 6px;
         }
         
-        .research-snippet {
-            color: var(--ocean-deepest);
+        .research-details {
+            background: var(--navy-dark);
+            border: 1px solid var(--panel-border);
+            border-radius: 6px;
+            padding: 12px;
+            margin: 8px 0;
+        }
+
+        .details-header {
+            color: var(--aqua-bright);
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 8px;
+            border-bottom: 1px solid var(--panel-border);
+            padding-bottom: 4px;
+        }
+
+        .details-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .detail-item {
+            color: var(--text-primary);
             font-size: 11px;
-            line-height: 1.4;
+            line-height: 1.5;
+            padding: 6px 0;
+            border-left: 3px solid var(--aqua-bright);
+            padding-left: 12px;
+            margin-bottom: 6px;
+            background: linear-gradient(90deg, rgba(44, 166, 217, 0.05) 0%, transparent 20%);
+            border-radius: 0 4px 4px 0;
+            transition: all 0.2s ease;
+        }
+
+        .detail-item:hover {
+            background: linear-gradient(90deg, rgba(44, 166, 217, 0.1) 0%, transparent 30%);
+            border-left-color: var(--aqua-muted);
+            transform: translateX(2px);
+        }
+
+        .detail-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .detail-item::before {
+            content: '▸';
+            color: var(--aqua-bright);
+            font-weight: bold;
+            margin-right: 8px;
+            font-size: 10px;
         }
 
         /* Enhanced tabbed interface for multiple research results */
         .research-tabs {
-            background: var(--ocean-panel);
-            border: 1px solid var(--ocean-border);
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
             margin: 8px 0;
             border-radius: 6px;
             overflow: hidden;
@@ -346,21 +400,21 @@ class VesselReportGenerator:
 
         .tab-headers {
             display: flex;
-            background: var(--ocean-darker);
-            border-bottom: 1px solid var(--ocean-border);
+            background: var(--navy-darker);
+            border-bottom: 1px solid var(--panel-border);
         }
 
         .tab-btn {
             flex: 1;
             background: transparent;
             border: none;
-            color: var(--ocean-medium);
+            color: var(--text-secondary);
             padding: 10px 8px;
             cursor: pointer;
             font-family: inherit;
             font-size: 11px;
             font-weight: 500;
-            border-right: 1px solid var(--ocean-border);
+            border-right: 1px solid var(--panel-border);
             position: relative;
             transition: all 0.2s ease;
         }
@@ -370,13 +424,13 @@ class VesselReportGenerator:
         }
 
         .tab-btn:hover {
-            background: var(--ocean-blue-muted);
-            color: var(--ocean-light);
+            background: var(--aqua-medium);
+            color: var(--text-primary);
         }
 
         .tab-btn.active {
-            background: var(--ocean-blue);
-            color: var(--ocean-light);
+            background: var(--aqua-bright);
+            color: var(--text-primary);
         }
 
         .status-dot {
@@ -387,10 +441,10 @@ class VesselReportGenerator:
             margin-left: 4px;
         }
 
-        .status-success { background: var(--ocean-success); }
-        .status-partial { background: var(--ocean-warning); }
-        .status-failed { background: var(--ocean-error); }
-        .status-unknown { background: var(--ocean-border); }
+        .status-success { background: var(--success); }
+        .status-partial { background: var(--warning); }
+        .status-failed { background: var(--error); }
+        .status-unknown { background: var(--panel-border); }
 
         .tab-content {
             padding: 6px;
@@ -401,13 +455,13 @@ class VesselReportGenerator:
             justify-content: space-between;
             align-items: center;
             padding: 8px 12px;
-            border-bottom: 1px solid var(--ocean-border);
-            background: var(--ocean-darker);
+            border-bottom: 1px solid var(--panel-border);
+            background: var(--navy-darker);
             margin-bottom: 8px;
         }
 
         .source-url {
-            color: var(--ocean-bright);
+            color: var(--aqua-bright);
             text-decoration: none;
             font-size: 11px;
             font-weight: 500;
@@ -419,16 +473,16 @@ class VesselReportGenerator:
 
         .source-url:hover {
             text-decoration: underline;
-            color: var(--ocean-success);
+            color: var(--success);
         }
 
         .reliability-badge {
-            background: var(--ocean-teal-dark);
-            color: var(--ocean-light);
+            background: var(--aqua-dark);
+            color: var(--text-primary);
             padding: 4px 8px;
             font-size: 9px;
             font-weight: 500;
-            border: 1px solid var(--ocean-teal);
+            border: 1px solid var(--aqua-bright);
             border-radius: 4px;
         }
 
@@ -437,20 +491,20 @@ class VesselReportGenerator:
             grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
             gap: 6px;
             padding: 8px 0;
-            background: var(--ocean-darker);
+            background: var(--navy-darker);
             margin-bottom: 8px;
         }
 
         .metadata-item {
-            background: var(--ocean-panel);
-            border: 1px solid var(--ocean-border);
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
             padding: 6px 8px;
-            border-left: 2px solid var(--ocean-teal);
+            border-left: 2px solid var(--aqua-bright);
             border-radius: 4px;
         }
 
         .metadata-label {
-            color: var(--ocean-blue);
+            color: var(--aqua-bright);
             font-size: 9px;
             font-weight: 600;
             display: block;
@@ -459,7 +513,7 @@ class VesselReportGenerator:
         }
 
         .metadata-value {
-            color: var(--ocean-deepest);
+            color: var(--text-primary);
             font-size: 10px;
             font-weight: 500;
             display: block;
@@ -468,22 +522,63 @@ class VesselReportGenerator:
 
         /* Screenshot display styling */
         .screenshot-container {
-            background: var(--ocean-darker);
-            border: 1px solid var(--ocean-border);
+            background: var(--navy-darker);
+            border: 1px solid var(--panel-border);
             margin: 8px 0;
             border-radius: 6px;
             overflow: hidden;
         }
 
+        .screenshot-toggle {
+            background: var(--navy-deepest);
+            color: var(--warning);
+            padding: 8px 12px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border: none;
+            width: 100%;
+            text-align: left;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s ease;
+            border-bottom: 1px solid var(--panel-border);
+        }
+
+        .screenshot-toggle:hover {
+            background: var(--warning);
+            color: var(--navy-deepest);
+        }
+
+        .screenshot-toggle::before {
+            content: '▶ ';
+            transition: transform 0.2s;
+            display: inline-block;
+        }
+
+        .screenshot-toggle.expanded::before {
+            transform: rotate(90deg);
+        }
+
+        .screenshot-content {
+            display: none;
+            padding: 8px;
+        }
+
+        .screenshot-content.expanded {
+            display: block;
+        }
+
         .screenshot-label {
-            background: var(--ocean-deepest);
-            color: var(--ocean-warning);
+            background: var(--navy-deepest);
+            color: var(--warning);
             padding: 6px 12px;
             font-size: 10px;
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            border-bottom: 1px solid var(--ocean-border);
+            border-bottom: 1px solid var(--panel-border);
         }
 
         .screenshot-image {
@@ -492,33 +587,34 @@ class VesselReportGenerator:
             height: auto;
             max-height: 200px;
             object-fit: contain;
-            border: 2px solid var(--ocean-border);
+            border: 2px solid var(--panel-border);
             border-radius: 4px;
             margin: 8px;
             cursor: pointer;
-            transition: border-color 0.2s ease;
+            transition: all 0.3s ease;
         }
 
         .screenshot-image:hover {
-            border-color: var(--ocean-teal);
-            box-shadow: 0 0 8px rgba(44, 154, 160, 0.3);
+            border-color: var(--aqua-bright);
+            box-shadow: 0 0 12px rgba(44, 166, 217, 0.4);
+            transform: scale(1.02);
         }
 
         .screenshot-unavailable {
             padding: 12px;
             text-align: center;
-            color: var(--ocean-medium);
+            color: var(--text-muted);
             font-size: 11px;
             font-style: italic;
         }
         
         .footer {
-            background: var(--ocean-deepest);
-            border-top: 1px solid var(--ocean-teal);
+            background: var(--navy-deepest);
+            border-top: 1px solid var(--aqua-bright);
             padding: 12px 16px;
             margin-top: 12px;
             text-align: center;
-            color: var(--ocean-medium);
+            color: var(--text-secondary);
             font-size: 11px;
             border-radius: 0 0 8px 8px;
         }
@@ -536,21 +632,21 @@ class VesselReportGenerator:
         }
         
         .scrollbar-custom::-webkit-scrollbar-track {
-            background: var(--ocean-darker);
+            background: var(--navy-darker);
         }
         
         .scrollbar-custom::-webkit-scrollbar-thumb {
-            background: var(--ocean-border);
+            background: var(--panel-border);
             border-radius: 4px;
         }
         
         .scrollbar-custom::-webkit-scrollbar-thumb:hover {
-            background: var(--ocean-teal);
+            background: var(--aqua-bright);
         }
         
         .column {
             scrollbar-width: thin;
-            scrollbar-color: var(--ocean-border) var(--ocean-darker);
+            scrollbar-color: var(--panel-border) var(--navy-darker);
         }
         
         @media (max-width: 1200px) {
@@ -595,22 +691,100 @@ class VesselReportGenerator:
             }
         }
         
-        function showPhotoModal(src) {
+        function toggleScreenshots(button, vesselId, sourceIndex) {
+            const contentId = 'screenshot-content-' + vesselId + '_' + sourceIndex;
+            const content = document.getElementById(contentId);
+            const isExpanded = content.classList.contains('expanded');
+            
+            if (isExpanded) {
+                content.classList.remove('expanded');
+                button.classList.remove('expanded');
+            } else {
+                content.classList.add('expanded');
+                button.classList.add('expanded');
+            }
+        }
+        
+        function showPhotoModal(src, title) {
             const modal = document.createElement('div');
             modal.style.cssText = `
                 position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-                background: rgba(0,0,0,0.9); z-index: 1000; display: flex;
+                background: rgba(21, 35, 47, 0.85); z-index: 1000; display: flex;
                 justify-content: center; align-items: center; cursor: pointer;
+                backdrop-filter: blur(4px);
+                animation: fadeIn 0.3s ease-out;
             `;
+            
+            const modalContent = document.createElement('div');
+            modalContent.style.cssText = `
+                max-width: 95%; max-height: 95%; display: flex; flex-direction: column;
+                align-items: center;
+            `;
+            
+            // Add title if provided
+            if (title) {
+                const titleDiv = document.createElement('div');
+                titleDiv.style.cssText = `
+                    color: #2CA6D9; font-size: 16px; font-weight: 600;
+                    margin-bottom: 12px; text-align: center;
+                    text-shadow: 0 0 8px rgba(44, 166, 217, 0.4);
+                `;
+                titleDiv.textContent = title;
+                modalContent.appendChild(titleDiv);
+            }
             
             const img = document.createElement('img');
             img.src = src;
-            img.style.cssText = 'max-width: 90%; max-height: 90%; border: 2px solid #00ff88;';
+            img.style.cssText = `
+                max-width: 100%; max-height: 85%; border: 3px solid #2CA6D9;
+                border-radius: 8px; box-shadow: 0 8px 32px rgba(44, 166, 217, 0.3);
+                animation: scaleIn 0.3s ease-out; cursor: default;
+            `;
             
-            modal.appendChild(img);
+            const closeButton = document.createElement('div');
+            closeButton.style.cssText = `
+                position: absolute; top: 20px; right: 25px; color: #2CA6D9;
+                font-size: 28px; font-weight: bold; cursor: pointer;
+                background: rgba(21, 35, 47, 0.8); border: 2px solid #2CA6D9;
+                border-radius: 50%; width: 40px; height: 40px;
+                display: flex; align-items: center; justify-content: center;
+                transition: all 0.2s ease;
+            `;
+            closeButton.innerHTML = '×';
+            closeButton.onmouseover = () => {
+                closeButton.style.background = 'rgba(44, 166, 217, 0.2)';
+                closeButton.style.transform = 'scale(1.1)';
+            };
+            closeButton.onmouseout = () => {
+                closeButton.style.background = 'rgba(21, 35, 47, 0.8)';
+                closeButton.style.transform = 'scale(1)';
+            };
+            
+            modalContent.appendChild(img);
+            modalContent.onclick = (e) => e.stopPropagation();
+            closeButton.onclick = () => document.body.removeChild(modal);
+            modal.onclick = () => document.body.removeChild(modal);
+            
+            modal.appendChild(modalContent);
+            modal.appendChild(closeButton);
             document.body.appendChild(modal);
             
-            modal.onclick = () => document.body.removeChild(modal);
+            // Add CSS animations
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes fadeIn {
+                    from { opacity: 0; }
+                    to { opacity: 1; }
+                }
+                @keyframes scaleIn {
+                    from { transform: scale(0.9); }
+                    to { transform: scale(1); }
+                }
+            `;
+            if (!document.querySelector('style[data-modal-animations]')) {
+                style.setAttribute('data-modal-animations', 'true');
+                document.head.appendChild(style);
+            }
         }
         
         function showTab(tabId) {
@@ -820,25 +994,41 @@ class VesselReportGenerator:
                             
                             <!-- Screenshot Display Section -->
                             <div class="screenshot-container">
-                                <div class="screenshot-label">PAGE SCREENSHOT</div>
-                                {% if result.metadata_extracted and result.metadata_extracted.get('screenshot_path') %}
-                                    <img src="{{ result.metadata_extracted.get('screenshot_path') }}" 
+                                <button class="screenshot-toggle" onclick="toggleScreenshots(this, {{ vessel.mmsi }}, {{ loop.index }})">
+                                    SCREENSHOTS - {{ vessel.vessel_name }} ({{ vessel.mmsi }})
+                                </button>
+                                <div class="screenshot-content" id="screenshot-content-{{ vessel.mmsi }}_{{ loop.index }}">
+                                    {% set screenshot_path = 'search_results/' + vessel.mmsi|string + '/screenshot_' + loop.index|string + '.jpg' %}
+                                    <img src="{{ screenshot_path }}" 
                                          alt="Page Screenshot" 
                                          class="screenshot-image" 
-                                         onclick="showPhotoModal('{{ result.metadata_extracted.get('screenshot_path') }}')"
+                                         onclick="showPhotoModal('{{ screenshot_path }}', '{{ vessel.vessel_name }} ({{ vessel.mmsi }}) - Screenshot {{ loop.index }}')"
                                          onerror="this.parentNode.querySelector('.screenshot-unavailable').style.display='block'; this.style.display='none';">
                                     <div class="screenshot-unavailable" style="display:none;">Screenshot failed to load</div>
-                                {% else %}
-                                    <div class="screenshot-unavailable">No screenshot available</div>
-                                {% endif %}
+                                </div>
                             </div>
                             
-                            <div class="research-snippet">
-                                {% if result.metadata_extracted and result.metadata_extracted.get('textContent') %}
-                                    {{ result.metadata_extracted.get('textContent')[:450] }}...
-                                {% else %}
-                                    {{ result.content_snippet[:300] }}...
-                                {% endif %}
+                            <div class="research-details">
+                                <div class="details-header">KEY INFORMATION</div>
+                                <ul class="details-list">
+                                    {% if result.metadata_extracted and result.metadata_extracted.get('details') %}
+                                        {% for detail in result.metadata_extracted.get('details') %}
+                                            <li class="detail-item">{{ detail }}</li>
+                                        {% endfor %}
+                                    {% elif result.metadata_extracted and result.metadata_extracted.get('textContent') %}
+                                        {% set content = result.metadata_extracted.get('textContent')[:600] %}
+                                        {% set sentences = content.split('.') %}
+                                        {% for sentence in sentences[:5] if sentence.strip() %}
+                                            <li class="detail-item">{{ sentence.strip() }}{% if not sentence.endswith('.') %}.{% endif %}</li>
+                                        {% endfor %}
+                                    {% else %}
+                                        {% set content = result.content_snippet %}
+                                        {% set sentences = content.split('.') %}
+                                        {% for sentence in sentences[:4] if sentence.strip() %}
+                                            <li class="detail-item">{{ sentence.strip() }}{% if not sentence.endswith('.') %}.{% endif %}</li>
+                                        {% endfor %}
+                                    {% endif %}
+                                </ul>
                             </div>
                         </div>
                         {% endfor %}

@@ -322,8 +322,21 @@ class MCPChromeClient:
             # Save content to file with URL-based filename
             content_file = self._save_content_to_file(raw_content, current_url, vessel_mmsi)
             
-            # LLM Second Use: Extract comprehensive vessel metadata
-            vessel_metadata = self._extract_vessel_metadata_with_llm(raw_content, query, current_url)
+            # LLM Second Use: Extract comprehensive vessel metadata and distinctive details
+            extraction_result = self._extract_vessel_metadata_with_llm(raw_content, query, current_url)
+            
+            # Extract metadata and details from combined result
+            if isinstance(extraction_result, dict):
+                vessel_metadata = extraction_result.get("metadata", "")
+                vessel_details = extraction_result.get("details", [])
+                
+                # Handle case where metadata is a dict (JSON structure)
+                if isinstance(vessel_metadata, dict):
+                    vessel_metadata = json.dumps(vessel_metadata, indent=2)
+            else:
+                # Fallback for backward compatibility
+                vessel_metadata = str(extraction_result)
+                vessel_details = []
             
             print(f"✅ Processed link {link_number}: {current_url[:50]}...")
             return WebSearchResult(
@@ -334,7 +347,8 @@ class MCPChromeClient:
                 metadata_extracted={
                     "content_file": content_file,
                     "screenshot_path": screenshot_path,
-                    "textContent": raw_content[:2000]  # Store first 2000 chars for descriptions
+                    "textContent": raw_content[:2000],  # Store first 2000 chars for descriptions
+                    "details": vessel_details
                 }
             )
             
@@ -398,10 +412,13 @@ class MCPChromeClient:
             print(f"⚠️ Failed to save content file: {e}")
             return ""
     
-    def _extract_vessel_metadata_with_llm(self, content: str, query: str, url: str) -> str:
-        """LLM Second Use: Extract comprehensive vessel metadata as structured information."""
+    def _extract_vessel_metadata_with_llm(self, content: str, query: str, url: str) -> Dict[str, Any]:
+        """LLM Second Use: Extract comprehensive vessel metadata and distinctive details as structured information."""
         if not self.llm:
-            return content[:1500]  # Fallback to truncated content
+            return {
+                "metadata": content[:1500],
+                "details": []
+            }
         
         metadata_prompt = f"""
         Extract comprehensive vessel metadata from this web page content in strict JSON format.
@@ -410,68 +427,140 @@ class MCPChromeClient:
         Source URL: {url}
         Content: {content[:8000]}  # Limit content size for LLM
         
-        Extract and structure the following vessel information:
+        Extract and structure the following vessel information with BOTH metadata AND details:
         {{
-            "vessel_name": "string",
-            "imo_number": "string",
-            "mmsi": "string",
-            "call_sign": "string",
-            "vessel_type": "string",
-            "flag": "string",
-            "dimensions": {{
-                "length_overall": "string",
-                "beam": "string",
-                "draft": "string"
+            "metadata": {{
+                "vessel_name": "string",
+                "imo_number": "string", 
+                "mmsi": "string",
+                "call_sign": "string",
+                "vessel_type": "string",
+                "flag": "string",
+                "dimensions": {{
+                    "length_overall": "string",
+                    "beam": "string",
+                    "draft": "string"
+                }},
+                "tonnage": {{
+                    "gross_tonnage": "string",
+                    "deadweight": "string"
+                }},
+                "propulsion": {{
+                    "engine_type": "string",
+                    "power": "string",
+                    "speed": "string"
+                }},
+                "construction": {{
+                    "built_year": "string",
+                    "shipyard": "string",
+                    "classification": "string"
+                }},
+                "operational": {{
+                    "owner": "string",
+                    "operator": "string",
+                    "current_status": "string"
+                }},
+                "additional_info": "string"
             }},
-            "tonnage": {{
-                "gross_tonnage": "string",
-                "deadweight": "string"
-            }},
-            "propulsion": {{
-                "engine_type": "string",
-                "power": "string",
-                "speed": "string"
-            }},
-            "construction": {{
-                "built_year": "string",
-                "shipyard": "string",
-                "classification": "string"
-            }},
-            "operational": {{
-                "owner": "string",
-                "operator": "string",
-                "current_status": "string"
-            }},
-            "additional_info": "string"
+            "details": [
+                "Array of 3-5 distinctive vessel characteristics as concise strings (each under 80 characters)",
+                "Focus on: specifications, registration, status, features, ownership",
+                "Example: Container ship, 339.6m LOA, built 2018",
+                "Example: Flag: Marshall Islands, IMO 9876543"
+            ]
         }}
         
-        If information is not available, use null for that field.
+        For the details array, extract 3-5 most distinctive characteristics such as:
+        - Vessel specifications (name, type, dimensions)  
+        - Flag state and registration details
+        - Current operational status or destination
+        - Notable features or capabilities
+        - Owner/operator information
+        - Construction details if significant
+        
+        If information is not available for metadata, use null for that field.
+        If insufficient information for details, use empty array [].
         Respond with ONLY valid JSON, no additional text.
         /no_think
         """
         
         try:
             response = self.llm.invoke([
-                ("system", "You are a maritime data extraction expert. Extract vessel information as strict JSON."),
+                ("system", "You are a maritime data extraction expert. Extract vessel information and distinctive details as strict JSON."),
                 ("user", metadata_prompt)
             ])
             
-            # content_response = response.content.strip()
             content_response = re.sub(r'<[^>]+>', '', response.content.strip())
 
             # Try to parse JSON and validate
             try:
                 vessel_data = json.loads(content_response)
-                # Convert back to formatted string for display
-                return json.dumps(vessel_data, indent=2)
+                
+                # Validate structure
+                if isinstance(vessel_data, dict) and "metadata" in vessel_data and "details" in vessel_data:
+                    # Ensure details is a list of strings, limit to 5 items and 80 chars each
+                    details = vessel_data.get("details", [])
+                    if isinstance(details, list):
+                        clean_details = [str(detail)[:80] for detail in details[:5] if isinstance(detail, str)]
+                        vessel_data["details"] = clean_details
+                    else:
+                        vessel_data["details"] = []
+                    
+                    return vessel_data
+                else:
+                    print("⚠️ LLM response missing metadata or details structure")
+                    return self._fallback_extract_combined_info(content, query)
+                
             except json.JSONDecodeError:
-                # If JSON parsing fails, extract key information manually
                 print("⚠️ LLM response was not valid JSON, using fallback extraction")
-                return self._fallback_extract_key_info(content, query)
+                return self._fallback_extract_combined_info(content, query)
             
         except Exception as e:
             print(f"⚠️ LLM metadata extraction failed: {e}")
-            return self._fallback_extract_key_info(content, query)
+            return self._fallback_extract_combined_info(content, query)
+    
+    
+    def _fallback_extract_details(self, content: str) -> List[str]:
+        """Fallback extraction of vessel details without LLM."""
+        # Simple keyword-based extraction for fallback
+        lines = content.split('\n')
+        details = []
+        
+        # Look for lines with key vessel information patterns
+        patterns = [
+            (r'(?i).*vessel\s+name[:\s]+(.*)', 'Vessel: {}'),
+            (r'(?i).*imo[:\s]+(\d+)', 'IMO: {}'),
+            (r'(?i).*mmsi[:\s]+(\d+)', 'MMSI: {}'),
+            (r'(?i).*length[:\s]+(\d+\.?\d*\s*m)', 'Length: {}'),
+            (r'(?i).*flag[:\s]+([^\n\r]{1,30})', 'Flag: {}'),
+            (r'(?i).*type[:\s]+([^\n\r]{1,40})', 'Type: {}')
+        ]
+        
+        for line in lines[:100]:  # Check first 100 lines
+            line = line.strip()
+            if 10 < len(line) < 150:  # Reasonable length
+                for pattern, format_str in patterns:
+                    match = re.search(pattern, line)
+                    if match and len(details) < 4:
+                        detail = format_str.format(match.group(1).strip())
+                        if detail not in details:  # Avoid duplicates
+                            details.append(detail[:80])  # Limit length
+                        break
+        
+        return details if details else []
+    
+    def _fallback_extract_combined_info(self, content: str, query: str) -> Dict[str, Any]:
+        """Fallback extraction of key vessel information and details without LLM."""
+        # Extract metadata as string
+        metadata_str = self._fallback_extract_key_info(content, query)
+        
+        # Extract details as array
+        details_array = self._fallback_extract_details(content)
+        
+        return {
+            "metadata": metadata_str,
+            "details": details_array
+        }
     
     def _fallback_extract_key_info(self, content: str, query: str) -> str:
         """Fallback extraction of key vessel information without LLM."""
