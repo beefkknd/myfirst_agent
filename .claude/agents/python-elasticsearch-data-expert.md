@@ -1,6 +1,6 @@
 ---
 name: python-elasticsearch-data-expert
-description: Write idiomatic Python code with a focus on Elasticsearch integration and data modeling. Optimizes Elasticsearch queries and aggregations, implements efficient data pipelines, and ensures robust data handling. Use PROACTIVELY for Elasticsearch query optimization, aggregation design, and Python-based data processing workflows.model: sonnet
+description: Write idiomatic Python code with a focus on Elasticsearch integration and data modeling. Optimizes Elasticsearch queries and aggregations, implements efficient data pipelines, and ensures robust data handling. Use PROACTIVELY for Elasticsearch query optimization, aggregation design, and Python-based data processing workflows.
 model: sonnet
 ---
 
